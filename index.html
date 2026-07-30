@@ -63,6 +63,48 @@
             50% { transform: translateY(-6px); }
         }
     </style>
+    <!-- Estils per forçar el Mode Clar -->
+    <style id="lightModeStyles">
+        body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; }
+        body.light-mode .bg-slate-950, 
+        body.light-mode .bg-slate-900 { background-color: #ffffff !important; }
+        body.light-mode .bg-slate-800 { background-color: #f1f5f9 !important; }
+        
+        /* Fons amb opacitat i difuminats */
+        body.light-mode .bg-slate-950\/50, 
+        body.light-mode .bg-slate-950\/60,
+        body.light-mode .bg-slate-900\/60,
+        body.light-mode .bg-slate-900\/90,
+        body.light-mode .bg-slate-800\/40, 
+        body.light-mode .bg-slate-800\/80 { background-color: rgba(255, 255, 255, 0.9) !important; backdrop-filter: blur(8px); }
+        
+        /* Vores */
+        body.light-mode .border-slate-800, 
+        body.light-mode .border-slate-700,
+        body.light-mode .border-slate-700\/50, 
+        body.light-mode .border-slate-700\/60 { border-color: #e2e8f0 !important; }
+        
+        /* Colors de text */
+        body.light-mode .text-slate-100, 
+        body.light-mode .text-slate-200, 
+        body.light-mode .text-slate-300 { color: #1e293b !important; }
+        body.light-mode .text-slate-400 { color: #475569 !important; }
+        body.light-mode .text-slate-500 { color: #64748b !important; }
+        
+        /* Inputs i Selects */
+        body.light-mode input, 
+        body.light-mode select { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+        
+        /* Protecció de textos blancs en botons i elements acolorits */
+        body.light-mode .text-white:not(button):not(.bg-gradient-to-tr):not(.bg-gradient-to-r):not(.bg-rose-500):not(.bg-rose-600):not(.bg-emerald-500):not(.bg-sky-500):not(.bg-amber-500):not(.bg-indigo-500):not(.bg-purple-500) {
+            color: #0f172a !important;
+        }
+        
+        /* Correcció de degradats de fons */
+        body.light-mode .from-slate-900 { --tw-gradient-from: #f8fafc !important; }
+        body.light-mode .to-slate-950 { --tw-gradient-to: #f1f5f9 !important; }
+    </style>
+</head>
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
 
@@ -387,7 +429,23 @@
 
             <div class="p-5 overflow-y-auto space-y-4 custom-scrollbar flex-1">
                 <p class="text-xs text-slate-400">Personalitza les teves categories, canvia'n el nom, icona, color o assigna un import màxim mensual.</p>
+<p class="text-xs text-slate-400">Personalitza les teves categories, canvia'n el nom, icona, color o assigna un import màxim mensual.</p>
 
+                <!-- Configuració d'Aparença (NOU) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2 flex justify-between items-center mt-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                            <i id="themeIcon" class="fa-solid fa-moon"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Aparença</h4>
+                    </div>
+                    <button onclick="window.toggleTheme()" id="themeToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-700 active:scale-95">
+                        Mode Clar
+                    </button>
+                </div>
+
+                <!-- Configuració Noms Parella (EXISTENT) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2">
                 <!-- Configuració Noms Parella -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2">
                     <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-3">Membres de la Parella</h4>
@@ -1802,9 +1860,53 @@
             }
         }
 
+       // ==========================================
+        // LÒGICA DEL TEMA CLAR/FOSC
+        // ==========================================
+        window.toggleTheme = function() {
+            const body = document.body;
+            const btn = document.getElementById('themeToggleBtn');
+            const icon = document.getElementById('themeIcon');
+            
+            body.classList.toggle('light-mode');
+            const isLight = body.classList.contains('light-mode');
+            
+            if (isLight) {
+                if(btn) btn.innerText = 'Mode Fosc';
+                if(icon) {
+                    icon.className = 'fa-solid fa-sun';
+                    icon.parentElement.className = 'w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center';
+                }
+                localStorage.setItem('despeses_theme', 'light');
+            } else {
+                if(btn) btn.innerText = 'Mode Clar';
+                if(icon) {
+                    icon.className = 'fa-solid fa-moon';
+                    icon.parentElement.className = 'w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center';
+                }
+                localStorage.setItem('despeses_theme', 'dark');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
             document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
+            
+            // Comprova si l'usuari tenia el mode clar guardat
+            if (localStorage.getItem('despeses_theme') === 'light') {
+                document.body.classList.add('light-mode');
+                // Assegurem que el botó s'actualitza correctament si l'usuari ja tenia el mode clar
+                setTimeout(() => {
+                    const btn = document.getElementById('themeToggleBtn');
+                    const icon = document.getElementById('themeIcon');
+                    if(btn) btn.innerText = 'Mode Fosc';
+                    if(icon) {
+                        icon.className = 'fa-solid fa-sun';
+                        icon.parentElement.className = 'w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center';
+                    }
+                }, 50);
+            }
+            
             initApp();
         });
 
