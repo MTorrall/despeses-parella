@@ -1392,63 +1392,144 @@
         }
         window.renderHistoryList = renderHistoryList;
 
-        function renderHistoryChart() {
-            const canvas = document.getElementById('expensesChart');
-            if(!canvas) return;
+ function renderHistoryChart() {
+    const canvas = document.getElementById('expensesChart');
+    if(!canvas) return;
 
-            if (expenseChartInstance) {
-                expenseChartInstance.destroy();
-            }
-
-            const monthsSet = new Set(allHistoricalExpenses.map(e => e.monthKey));
-            let monthsArray = Array.from(monthsSet).sort();
-            if(monthsArray.length === 0) monthsArray = [getCurrentMonthKey()];
-
-            const datasets = categories.map(cat => {
-                const data = monthsArray.map(mKey => {
-                    const total = allHistoricalExpenses.filter(e => e.monthKey === mKey && e.categoryId === cat.id)
-                                          .reduce((sum, e) => sum + parseFloat(e.amount), 0);
-                    return total;
-                });
-
-                return {
-                    label: cat.name,
-                    data: data,
-                    borderColor: CHART_COLORS[cat.color] || '#cbd5e1',
-                    backgroundColor: (CHART_COLORS[cat.color] || '#cbd5e1') + '20',
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: CHART_COLORS[cat.color] || '#cbd5e1'
-                };
-            });
-
-            const labels = monthsArray.map(m => {
-                const [y, mo] = m.split('-');
-                return `${mo}/${y.substring(2)}`;
-            });
-
-            expenseChartInstance = new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    color: '#94a3b8',
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: {size: 10} } },
-                        tooltip: { mode: 'index', intersect: false }
-                    },
-                    scales: {
-                        x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 10} } },
-                        y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 10} } }
-                    },
-                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
-                }
-            });
+    // Si anteriorment teníem el gràfic de barres separat, el netegem de la pantalla
+    const oldPayerCanvas = document.getElementById('payerExpensesChart');
+    if (oldPayerCanvas) {
+        const cardToRemove = oldPayerCanvas.closest('.bg-slate-900') || oldPayerCanvas.parentElement;
+        if (cardToRemove && cardToRemove !== canvas.parentElement) {
+            cardToRemove.remove();
         }
+    }
+
+    if (expenseChartInstance) {
+        expenseChartInstance.destroy();
+    }
+
+    const monthsSet = new Set(allHistoricalExpenses.map(e => e.monthKey));
+    let monthsArray = Array.from(monthsSet).sort();
+    if(monthsArray.length === 0) monthsArray = [getCurrentMonthKey()];
+
+    // 1. Línies poligonals per Categoria
+    const categoryDatasets = categories.map(cat => {
+        const data = monthsArray.map(mKey => {
+            return allHistoricalExpenses
+                .filter(e => e.monthKey === mKey && e.categoryId === cat.id)
+                .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+        });
+
+        return {
+            label: cat.name,
+            data: data,
+            borderColor: CHART_COLORS[cat.color] || '#cbd5e1',
+            backgroundColor: (CHART_COLORS[cat.color] || '#cbd5e1') + '20',
+            tension: 0.4,
+            fill: false,
+            borderWidth: 2,
+            pointBackgroundColor: CHART_COLORS[cat.color] || '#cbd5e1'
+        };
+    });
+
+    // 2. Línies poligonals per Pagador (Marçal, Laura, Compartit)
+    const getPayerStr = (e) => (e.paidBy || e.payer || e.who || e.user || e.person || '').toString().toLowerCase();
+    const isMarcal = (e) => getPayerStr(e).includes('marçal') || getPayerStr(e).includes('marcal') || getPayerStr(e) === 'p1' || getPayerStr(e) === 'persona 1';
+    const isLaura = (e) => getPayerStr(e).includes('laura') || getPayerStr(e) === 'p2' || getPayerStr(e) === 'persona 2';
+
+    const marcalData = monthsArray.map(mKey => 
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && isMarcal(e))
+                             .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
+    );
+
+    const lauraData = monthsArray.map(mKey => 
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && isLaura(e))
+                             .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
+    );
+
+    const compartitData = monthsArray.map(mKey => 
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && !isMarcal(e) && !isLaura(e))
+                             .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
+    );
+
+    const payerDatasets = [
+        {
+            label: '👤 Marçal',
+            data: marcalData,
+            borderColor: '#3b82f6', // Blau
+            backgroundColor: '#3b82f6',
+            tension: 0.4,
+            borderWidth: 3,
+            borderDash: [6, 4], // Línia discontínua per destacar dels tipus de despesa
+            pointRadius: 4,
+            fill: false,
+            pointBackgroundColor: '#3b82f6'
+        },
+        {
+            label: '👤 Laura',
+            data: lauraData,
+            borderColor: '#ec4899', // Rosa
+            backgroundColor: '#ec4899',
+            tension: 0.4,
+            borderWidth: 3,
+            borderDash: [6, 4],
+            pointRadius: 4,
+            fill: false,
+            pointBackgroundColor: '#ec4899'
+        },
+        {
+            label: '👥 Compartit',
+            data: compartitData,
+            borderColor: '#10b981', // Verd
+            backgroundColor: '#10b981',
+            tension: 0.4,
+            borderWidth: 3,
+            borderDash: [6, 4],
+            pointRadius: 4,
+            fill: false,
+            pointBackgroundColor: '#10b981'
+        }
+    ];
+
+    // Unim totes les opcions en un únic gràfic
+    const allDatasets = [...categoryDatasets, ...payerDatasets];
+
+    const labels = monthsArray.map(m => {
+        const [y, mo] = m.split('-');
+        return `${mo}/${y.substring(2)}`;
+    });
+
+    expenseChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: allDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            color: '#94a3b8',
+            plugins: {
+                legend: { 
+                    position: 'bottom', 
+                    labels: { 
+                        color: '#94a3b8', 
+                        boxWidth: 12, 
+                        font: { size: 10 },
+                        usePointStyle: true
+                    } 
+                },
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } },
+                y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } }
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false }
+        }
+    });
+}
 
         window.exportToExcel = function() {
             if(!window.XLSX) {
