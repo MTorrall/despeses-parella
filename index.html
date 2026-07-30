@@ -441,7 +441,17 @@
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
+                            <div class="flex items-center space-x-2">
+                            <!-- Aquest és el teu codi original -->
                             <span id="displayPairCode" class="font-mono text-xs font-bold text-indigo-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 select-all">---</span>
+                            
+                            <!-- Aquest és el NOU BOTÓ adaptat al teu disseny -->
+                            <button onclick="copiarCodi()" id="btnCopiarCodi" title="Copiar codi" class="flex items-center justify-center p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer">
+                                <svg id="iconaCopiar" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                     
