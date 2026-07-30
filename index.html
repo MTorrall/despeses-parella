@@ -443,11 +443,12 @@
                             </div>
                         </div>
                         
-                        <!-- Part Dreta: Codi i Botó Copiar -->
+<!-- Part Dreta: Codi i Botó Copiar -->
                         <div class="flex items-center space-x-2">
                             <span id="displayPairCode" class="font-mono text-xs font-bold text-indigo-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 select-all shrink-0">---</span>
                             
-                            <button onclick="copiarCodi()" id="btnCopiarCodi" title="Copiar codi" class="flex items-center justify-center p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0">
+                            <!-- Botó Netejat (sense onclick) -->
+                            <button id="btnCopiarCodi" title="Copiar codi" class="flex items-center justify-center p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0">
                                 <svg id="iconaCopiar" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1933,7 +1934,35 @@
             
             initApp();
         });
-
+document.addEventListener('DOMContentLoaded', () => {
+            const btnCopiar = document.getElementById('btnCopiarCodi');
+            
+            if (btnCopiar) {
+                btnCopiar.addEventListener('click', () => {
+                    const elementCodi = document.getElementById('displayPairCode');
+                    if (!elementCodi) return;
+                
+                    const codi = elementCodi.innerText;
+                    
+                    navigator.clipboard.writeText(codi).then(() => {
+                        const iconaOriginal = btnCopiar.innerHTML; 
+                        
+                        btnCopiar.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        `;
+                        
+                        setTimeout(() => {
+                            btnCopiar.innerHTML = iconaOriginal;
+                        }, 2000);
+                        
+                    }).catch(err => {
+                        console.error('Error en copiar el codi al porta-retalls: ', err);
+                    });
+                });
+            }
+        });
     </script>
    <script>
 // Espera a que la pàgina carregui completament
