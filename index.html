@@ -1724,20 +1724,20 @@
         });
 
     </script>
-    <script>
-    // Espera a que la pàgina carregui completament
-    window.addEventListener('load', () => {
-        const loader = document.getElementById('initialLoader');
-        if (loader) {
-            // Activa l'animació de transició (es torna transparent)
-            loader.classList.add('opacity-0');
-            
-            // Espera 500ms (el temps de la teva animació) i després l'amaga del tot
-            setTimeout(() => {
-                loader.classList.add('hidden');
-            }, 500); 
-        }
-    });
+   <script>
+// Espera a que la pàgina carregui completament
+window.addEventListener('load', () => {
+    const loader = document.getElementById('initialLoader');
+    if (loader) {
+        // Activa l'animació de transició (es torna transparent)
+        loader.classList.add('opacity-0');
+        
+        // Espera 500ms i després l'amaga del tot
+        setTimeout(() => {
+            loader.classList.add('hidden');
+        }, 500);
+    }
+});
 </script>
 </body>
 </html>
