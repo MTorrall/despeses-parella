@@ -413,7 +413,7 @@
         </div>
     </div>
 
-    <!-- 3. MODAL CONFIGURACIÓ DE LÍMITS -->
+<!-- 3. MODAL CONFIGURACIÓ DE LÍMITS -->
     <div id="settingsModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             
@@ -431,7 +431,7 @@
                 <p class="text-xs text-slate-400">Personalitza les teves categories, canvia'n el nom, icona, color o assigna un import màxim mensual.</p>
 
                 <!-- ========================================== -->
-                <!-- Gestió del Codi de Parella i Sessió (NOU)  -->
+                <!-- Gestió del Codi de Parella i Sessió        -->
                 <!-- ========================================== -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2 mt-4 space-y-3">
                     <div class="flex items-center justify-between">
@@ -440,22 +440,19 @@
                                 <i class="fa-solid fa-key"></i>
                             </div>
                             <div>
-                                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Codi</h4>
-                                <p class="text-[10px] text-slate-400">Sincronitza l'app</p>
+                                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">El teu Codi</h4>
+                                <p class="text-[10px] text-slate-400">Espai vinculat</p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span id="displayPairCode" class="font-mono text-xs font-bold text-indigo-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 select-all">---</span>
-                            <button onclick="window.copyPairCode()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg text-xs font-bold transition-colors border border-slate-700 active:scale-95" title="Copiar codi">
-                                <i class="fa-solid fa-copy"></i>
-                            </button>
                         </div>
                     </div>
                     
                     <!-- Botó de Tancar Sessió -->
-                    <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
-                        <span class="text-xs text-slate-400">Canviar de grup o eixir?</span>
-                        <button onclick="window.logout()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center space-x-1.5 active:scale-95">
+                    <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-[10px] text-slate-400">Vols sortir d'aquest espai?</span>
+                        <button onclick="window.unlinkCoupleSpace()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center space-x-1.5 active:scale-95">
                             <i class="fa-solid fa-right-from-bracket"></i>
                             <span>Tancar Sessió</span>
                         </button>
@@ -463,31 +460,6 @@
                 </div>
                 <!-- ========================================== -->
 
-              <!-- Gestió del Codi de Parella i Sessió -->
-<div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2 mt-4 space-y-3">
-    <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <i class="fa-solid fa-key"></i>
-            </div>
-            <div>
-                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Codi</h4>
-                <p class="text-[10px] text-slate-400">Sincronitza l'app</p>
-            </div>
-        </div>
-        <div class="flex items-center space-x-2">
-    </div>
-    <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
-        <span class="text-xs text-slate-400">Canviar de grup o eixir?</span>
-        <button onclick="window.logout()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center space-x-1.5 active:scale-95">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Tancar Sessió</span>
-        </button>
-    </div>
-</div>
-
-                <!-- Configuració Noms Parella (EXISTENT) -->
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2">
                 <!-- Configuració Noms Parella -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2">
                     <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-3">Membres de la Parella</h4>
@@ -749,6 +721,7 @@
                 if (localCoupleId) {
                     coupleId = localCoupleId;
                     document.getElementById('displayCoupleCode').innerText = coupleId;
+                    document.getElementById('displayPairCode').innerText = coupleId;
                     initializeSharedCollections(coupleId);
                 } else {
                     hideLoaderForce();
@@ -772,6 +745,7 @@
                 if (prefSnap.exists() && prefSnap.data().coupleId) {
                     coupleId = prefSnap.data().coupleId;
                     document.getElementById('displayCoupleCode').innerText = coupleId;
+                    document.getElementById('displayPairCode').innerText = coupleId;
                     initializeSharedCollections(coupleId);
                 } else {
                     hideLoaderForce();
@@ -806,6 +780,7 @@
             document.getElementById('coupleLoginModal').classList.add('hidden');
             document.getElementById('shareCodeModal').classList.add('hidden');
             document.getElementById('displayCoupleCode').innerText = coupleId;
+            document.getElementById('displayPairCode').innerText = coupleId;
             
             isSettingsLoaded = false;
             isExpensesLoaded = false;
@@ -860,6 +835,7 @@
                 loadedHistoricalData = false;
                 categories = [...DEFAULT_CATEGORIES];
                 document.getElementById('displayCoupleCode').innerText = '...';
+                document.getElementById('displayPairCode').innerText = '---';
                 
                 if (db && currentUser) {
                     const prefRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'config');
