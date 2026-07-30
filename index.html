@@ -431,18 +431,28 @@
                 <p class="text-xs text-slate-400">Personalitza les teves categories, canvia'n el nom, icona, color o assigna un import màxim mensual.</p>
 <p class="text-xs text-slate-400">Personalitza les teves categories, canvia'n el nom, icona, color o assigna un import màxim mensual.</p>
 
-                <!-- Configuració d'Aparença (NOU) -->
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2 flex justify-between items-center mt-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center">
-                            <i id="themeIcon" class="fa-solid fa-moon"></i>
-                        </div>
-                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Aparença</h4>
-                    </div>
-                    <button onclick="window.toggleTheme()" id="themeToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-700 active:scale-95">
-                        Mode Clar
-                    </button>
-                </div>
+              <!-- Gestió del Codi de Parella i Sessió -->
+<div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2 mt-4 space-y-3">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <i class="fa-solid fa-key"></i>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Codi</h4>
+                <p class="text-[10px] text-slate-400">Sincronitza l'app</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+    </div>
+    <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+        <span class="text-xs text-slate-400">Canviar de grup o eixir?</span>
+        <button onclick="window.logout()" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center space-x-1.5 active:scale-95">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Tancar Sessió</span>
+        </button>
+    </div>
+</div>
 
                 <!-- Configuració Noms Parella (EXISTENT) -->
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2">
