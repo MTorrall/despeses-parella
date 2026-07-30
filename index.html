@@ -1512,10 +1512,10 @@
                     iconOptionsHtml += `<option value="${cat.icon}" selected>Icona actual (${cat.icon})</option>`;
                 }
 
-                listDiv.innerHTML += `
+             listDiv.innerHTML += `
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group" data-index="${index}">
-                        <button onclick="window.deleteCategory(${index})" class="absolute top-2 right-2 w-7 h-7 bg-rose-500/10 text-rose-400 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Eliminar categoria">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        <button onclick="window.deleteCategory(${index})" class="absolute top-2 right-2 w-8 h-8 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg flex items-center justify-center transition-all active:scale-95" title="Eliminar categoria">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                         
                         <div class="grid grid-cols-2 gap-3 mb-3">
@@ -1699,9 +1699,13 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        window.openQuickAddModal = function() {
-            window.openCategoryModal(categories[0].id);
-        }
+       window.openQuickAddModal = function() {
+    if (categories && categories.length > 0) {
+        window.openCategoryModal(categories[0].id);
+    } else {
+        showCustomModal("Sense categories", "No tens cap categoria creada. Si us plau, vés a la Configuració per afegir-ne una abans de registrar despeses.", null, true);
+    }
+}
 
         function changeMonth(delta) {
             activeDate.setMonth(activeDate.getMonth() + delta);
