@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="ca" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Despeses Parella - Seguiment Mensual</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Càrrega asíncrona/diferida (defer) de llibreries pesades -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        html, body, button, input, select {
+            touch-action: manipulation;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 9999px;
+        }
+        .animate-bounce-short {
+            animation: bounce 0.4s ease-in-out 1;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
+
+    <!-- Indicador de càrrega inicial -->
+    <div id="initialLoader" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 animate-pulse mb-4">
+            <i class="fa-solid fa-wallet text-3xl"></i>
+        </div>
+        <h2 class="text-white font-bold text-xl">Despeses Parella</h2>
+        <p class="text-slate-400 text-sm mt-3 flex items-center space-x-2">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <span>Sincronitzant amb el núvol...</span>
+        </p>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div id="app" class="flex-1 flex flex-col max-w-md mx-auto w-full min-h-screen pb-20 shadow-2xl bg-slate-900 border-x border-slate-800">
+
+        <!-- Banner Offline (Només es mostra si no hi ha núvol) -->
+        <div id="offlineBanner" class="hidden bg-rose-600 text-white text-[10px] sm:text-xs text-center py-1 font-bold shadow-md z-30 flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Mode Local: Configura Firebase per sincronitzar</span>
+        </div>
+
+        <!-- Capçalera principal -->
+        <header class="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-wallet text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-base font-bold text-slate-100 leading-tight">Despeses Parella</h1>
+                        <span id="syncStatus" class="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" title="Connectant al núvol..."></span>
+                    </div>
+                    <div class="flex items-center space-x-1 text-xs text-slate-400">
+                        <button id="prevMonthBtn" class="hover:text-sky-400 p-0.5" aria-label="Mes anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="currentMonthLabel" class="font-semibold text-sky-400 capitalize">Gener 2026</span>
+                        <button id="nextMonthBtn" class="hover:text-sky-400 p-0.5" aria-label="Mes següent"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button onclick="window.openShareModal()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 transition-all font-bold text-xs flex items-center space-x-1 border border-slate-700" title="Codi de Vinculació">
+                    <i class="fa-solid fa-key"></i>
+                    <span id="displayCoupleCode">...</span>
+                </button>
+                <button onclick="window.openHistoryModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95" aria-label="Historial i Exportar" title="Historial i Exportar">
+                    <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                </button>
+                <button onclick="window.openSettingsModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95" aria-label="Configuració de Límits" title="Configuració de Límit">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Resum Global del Mes -->
+        <section class="p-4 bg-gradient-to-b from-slate-900 to-slate-950">
+            <div class="bg-slate-800/80 border border-slate-700/60 rounded-2xl p-4 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-sky-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-xs uppercase font-bold tracking-wider text-slate-400">Total Acumulat Mes</span>
+                        <div class="flex items-baseline space-x-2 mt-0.5">
+                            <span id="globalTotalAmount" class="text-3xl font-black text-white tracking-tight">0,00 €</span>
+                        </div>
+                    </div>
+                    <div id="globalLimitBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-700 text-slate-300 border border-slate-600">
+                        Límit: <span id="globalTotalLimit">Sense límit</span>
+                    </div>
+                </div>
+
+                <!-- Barra de progrés global -->
+                <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-700/50 my-2">
+                    <div id="globalProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+
+                <!-- Desglossament per pagador -->
+                <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/50 text-center">
+                    <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+                        <span id="labelPerson1" class="text-[10px] text-slate-400 block font-medium truncate">Marçal</span>
+                        <span id="totalMarcal" class="text-xs font-bold text-sky-400">0 €</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+                        <span id="labelPerson2" class="text-[10px] text-slate-400 block font-medium truncate">Laura</span>
+                        <span id="totalLaura" class="text-xs font-bold text-pink-400">0 €</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+                        <span class="text-[10px] text-slate-400 block font-medium">Compartit</span>
+                        <span id="totalCompartit" class="text-xs font-bold text-amber-400">0 €</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Graella de Categories -->
+        <main class="flex-1 p-4 pt-2">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <h2 class="text-sm font-bold text-slate-300 uppercase tracking-wider">Categories de Despesa</h2>
+                <span class="text-xs text-slate-500">Prem per afegir o revisar</span>
+            </div>
+
+            <!-- Grid de targetes de categoria -->
+            <div id="categoriesGrid" class="grid grid-cols-2 gap-3.5">
+                <!-- Es generaran dinàmicament per JS -->
+            </div>
+        </main>
+
+        <!-- Barra Inferior d'Accés Ràpid / Navegació -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-slate-900/90 backdrop-blur-lg border-t border-slate-800 p-2 px-6 flex justify-around items-center z-20">
+            <button onclick="window.scrollToTop()" class="flex flex-col items-center text-sky-400 hover:text-sky-300" aria-label="Anar a Inici">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-[10px] font-medium mt-0.5">Inici</span>
+            </button>
+            
+            <button onclick="window.openQuickAddModal()" class="w-12 h-12 bg-gradient-to-r from-sky-500 to-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-sky-500/40 hover:scale-105 active:scale-95 transition-all -translate-y-3" aria-label="Afegir ràpidament">
+                <i class="fa-solid fa-plus text-xl"></i>
+            </button>
+
+            <button onclick="window.openHistoryModal()" class="flex flex-col items-center text-slate-400 hover:text-slate-200" aria-label="Veure Registre">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                <span class="text-[10px] font-medium mt-0.5">Registre</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODALS & POPUPS                            -->
+    <!-- ========================================== -->
+
+    <!-- 1. MODAL DETALL CATEGORIA I NOU ENTRADA -->
+    <div id="categoryModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden transform transition-all">
+            
+            <!-- Modal Header -->
+            <div id="catModalHeader" class="p-5 border-b border-slate-800 flex items-center justify-between relative">
+                <div class="flex items-center space-x-3">
+                    <div id="catModalIconBg" class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+                        <i id="catModalIcon" class="fa-solid fa-utensils"></i>
+                    </div>
+                    <div>
+                        <h3 id="catModalTitle" class="text-xl font-bold text-white">Menjar</h3>
+                        <p class="text-xs text-slate-400">Total acumulat aquest mes</p>
+                    </div>
+                </div>
+                <button onclick="window.closeCategoryModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center" aria-label="Tancar modal">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="p-5 overflow-y-auto space-y-6 custom-scrollbar flex-1">
+                
+                <!-- Display d'Acumulat i Límit -->
+                <div id="catModalBanner" class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 relative overflow-hidden">
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Acumulat actual</span>
+                        <span id="catModalLimitText" class="text-xs font-bold text-slate-300">Límit: 0 €</span>
+                    </div>
+                    <div id="catModalAmount" class="text-3xl font-black text-white tracking-tight">0,00 €</div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-900 rounded-full h-3 border border-slate-700/60 overflow-hidden my-2">
+                        <div id="catModalProgressBar" class="h-full rounded-full transition-all duration-300 bg-emerald-500" style="width: 0%"></div>
+                    </div>
+                    <div id="catModalAlert" class="hidden text-xs font-semibold text-red-400 mt-1 flex items-center space-x-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Has superat el màxim establert per a aquesta categoria!</span>
+                    </div>
+                </div>
+
+                <!-- Formulari de Nova Despesa Ràpida -->
+                <form id="quickExpenseForm" onsubmit="window.handleExpenseSubmit(event)" class="space-y-4 bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
+                    <h4 class="text-xs uppercase font-bold text-sky-400 tracking-wider flex items-center space-x-1.5">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Afegir nova despesa</span>
+                    </h4>
+
+                    <!-- Import -->
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 font-medium">Quantitat (€)</label>
+                        <div class="relative">
+                            <input type="number" id="expenseAmount" step="0.01" min="0.01" placeholder="0.00" required
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-2xl font-bold text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl font-bold">€</span>
+                        </div>
+                        <!-- Botons d'accés ràpid d'import -->
+                        <div class="flex space-x-2 mt-2">
+                            <button type="button" onclick="window.addQuickAmount(5)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+5€</button>
+                            <button type="button" onclick="window.addQuickAmount(10)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+10€</button>
+                            <button type="button" onclick="window.addQuickAmount(20)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+20€</button>
+                            <button type="button" onclick="window.addQuickAmount(50)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+50€</button>
+                        </div>
+                    </div>
+
+                    <!-- Concepte / Descripció -->
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 font-medium">Concepte / Descripció</label>
+                        <input type="text" id="expenseConcept" placeholder="Ex: Sopar divendres, Supermercat, Cine..." required
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500 transition-all">
+                    </div>
+
+                    <!-- Qui ho ha pagat i Data -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 font-medium">Pagat per</label>
+                            <select id="expensePayer" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-medium text-white focus:outline-none focus:border-sky-500">
+                                <option value="shared">Compartit (50/50)</option>
+                                <option value="p1" id="optPayer1">Marçal</option>
+                                <option value="p2" id="optPayer2">Laura</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 font-medium">Data</label>
+                            <input type="date" id="expenseDate" required
+                                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                        </div>
+                    </div>
+
+                    <!-- Botó Afegir -->
+                    <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center space-x-2 active:scale-95">
+                        <i class="fa-solid fa-plus-circle text-lg"></i>
+                        <span>Afegir Despesa</span>
+                    </button>
+                </form>
+
+                <!-- Llista de despeses recents d'aquesta categoria -->
+                <div>
+                    <h4 class="text-xs uppercase font-bold text-slate-400 tracking-wider mb-3">Moviments d'aquest mes</h4>
+                    <div id="catExpenseList" class="space-y-2">
+                        <!-- Generat dinàmicament -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MODAL HISTORIAL I EXPORTACIÓ EXCEL -->
+    <div id="historyModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-t-3xl sm:rounded-3xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check text-sky-400 text-xl"></i>
+                    <h3 class="text-lg font-bold text-white">Registre i Exportació</h3>
+                </div>
+                <button onclick="window.closeHistoryModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center" aria-label="Tancar Historial">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 bg-slate-950/60 border-b border-slate-800 flex flex-wrap gap-2 justify-between items-center">
+                <div class="text-xs text-slate-400">
+                    Mes seleccionat: <strong id="historyMonthText" class="text-sky-400 capitalize">Gener 2026</strong>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="window.exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md active:scale-95">
+                        <i class="fa-solid fa-file-excel text-sm"></i>
+                        <span>Exportar Excel</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs de Llista / Gràfic -->
+            <div class="flex border-b border-slate-800 bg-slate-900 shrink-0">
+                <button id="tabListBtn" onclick="window.showHistoryTab('list')" class="flex-1 py-2.5 text-sm font-bold text-sky-400 border-b-2 border-sky-400 transition-colors">Llista</button>
+                <button id="tabChartBtn" onclick="window.showHistoryTab('chart')" class="flex-1 py-2.5 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-colors">Gràfic</button>
+            </div>
+
+            <!-- Filtres de cerca -->
+            <div id="historyListFilters" class="bg-slate-950 p-3 border-b border-slate-800 flex flex-col space-y-2 shrink-0">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" id="searchHistoryText" oninput="window.renderHistoryList()" placeholder="Buscar per concepte..." class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
+                </div>
+                <div class="flex space-x-2">
+                    <select id="searchHistoryPayer" onchange="window.renderHistoryList()" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500">
+                        <option value="">Tots els pagadors</option>
+                        <option value="shared">Compartit (50/50)</option>
+                        <option value="p1" id="optSearchPayer1">Marçal</option>
+                        <option value="p2" id="optSearchPayer2">Laura</option>
+                    </select>
+                    <div class="relative flex-1">
+                        <input type="date" id="searchHistoryDate" onchange="window.renderHistoryList()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500">
+                        <button onclick="document.getElementById('searchHistoryDate').value=''; window.renderHistoryList()" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-500 hover:text-rose-400 bg-slate-800 rounded-full" title="Netejar data">
+                            <i class="fa-solid fa-xmark text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Llista de tots els moviments -->
+            <div class="flex-1 p-4 overflow-y-auto space-y-2 custom-scrollbar" id="allExpensesList">
+                <!-- Se carregarà dinàmicament -->
+            </div>
+            
+            <!-- Contenidor del Gràfic Poligonal -->
+            <div id="historyChartContainer" class="hidden flex-1 p-4 overflow-y-auto custom-scrollbar flex-col">
+                <div class="flex-1 min-h-[300px] bg-slate-950 p-2 rounded-xl border border-slate-800 relative w-full flex">
+                    <canvas id="expensesChart"></canvas>
+                </div>
+                <p class="text-[10px] text-slate-400 text-center mt-3 px-2">Evolució de les despeses per categoria. Es mostren els mesos amb activitat.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MODAL CONFIGURACIÓ DE LÍMITS -->
+    <div id="settingsModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-layer-group text-amber-400 text-xl"></i>
+                    <h3 class="text-lg font-bold text-white">Categories i Límits</h3>
+                </div>
+                <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center" aria-label="Tancar configuració">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-4 custom-scrollbar flex-1">
+                <p class="text-xs text-slate-400">Personalitza les teves categories, canvia'n el nom, icona, color o assigna un import màxim mensual.</p>
+
+                <!-- Configuració Noms Parella -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-2">
+                    <h4 class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-3">Membres de la Parella</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Nom Persona 1</label>
+                            <input type="text" id="inputSettingsPerson1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Ex: Marçal">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Nom Persona 2</label>
+                            <input type="text" id="inputSettingsPerson2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Ex: Laura">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="limitsCategoryList" class="space-y-3">
+                    <!-- Generat dinàmicament -->
+                </div>
+
+                <div class="pt-4 border-t border-slate-800">
+                    <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2">Reinici de Mes</h4>
+                    <p class="text-xs text-slate-400 mb-3">Elimina totes les despeses d'aquest mes per a tots dos usuaris:</p>
+                    <button onclick="window.confirmResetCurrentMonth()" class="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reiniciar despeses d'aquest mes</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-950">
+                <button onclick="window.saveCategoriesAndClose()" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl text-sm shadow-lg shadow-sky-500/20 active:scale-95 transition-all">
+                    Guardar Canvis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOM CONFIRM / NOTIFICATION -->
+    <div id="customModal" class="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 text-center shadow-2xl">
+            <div id="customModalIcon" class="w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto text-xl mb-3">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h4 id="customModalTitle" class="text-lg font-bold text-white mb-2">Confirmació</h4>
+            <p id="customModalMessage" class="text-xs text-slate-300 mb-5">Estàs segur de voler realitzar aquesta acció?</p>
+            <div class="flex space-x-2">
+                <button id="customModalCancel" class="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-colors">Cancel·lar</button>
+                <button id="customModalConfirm" class="flex-1 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-500 transition-colors">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VINCULACIÓ PARELLA -->
+    <div id="coupleLoginModal" class="fixed inset-0 z-[60] bg-slate-950 backdrop-blur-xl hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-12 -left-12 w-40 h-40 bg-sky-500/20 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-12 -right-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl"></div>
+            
+            <div class="relative z-10">
+                <div class="w-16 h-16 mx-auto bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-3xl shadow-lg shadow-sky-500/30 mb-4">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <h3 class="text-xl font-black text-white mb-2">Codi de Parella</h3>
+                <p class="text-xs text-slate-400 mb-6">Per no barrejar dades, cada parella té un espai secret i únic. <br><b>Atenció:</b> Si estàs en mode local (sense Firebase configurat), les dades només es guardaran en aquest dispositiu.</p>
+                
+                <div class="space-y-4">
+                    <div class="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 text-left">1. Teniu un codi d'unió?</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="joinCodeInput" placeholder="EX: A49K2X" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-white text-center uppercase outline-none focus:border-sky-500 transition-colors">
+                            <button onclick="window.joinExistingCouple()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-colors active:scale-95 shadow-md">Unir-se</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative flex items-center py-2">
+                        <div class="flex-grow border-t border-slate-800"></div>
+                        <span class="shrink-0 px-3 text-xs text-slate-500 font-medium">O BÉ</span>
+                        <div class="flex-grow border-t border-slate-800"></div>
+                    </div>
+                    
+                    <button onclick="window.createNewCouple()" class="w-full bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 font-bold py-3 px-4 rounded-xl text-sm transition-colors flex items-center justify-center space-x-2 active:scale-95">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Generar nou espai buit</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL COMPARTIR CODI -->
+    <div id="shareCodeModal" class="fixed inset-0 z-[55] bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative">
+            <button onclick="window.closeShareModal()" class="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400" aria-label="Tancar modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <i class="fa-solid fa-key text-3xl text-amber-400 mb-3 block"></i>
+            <h3 class="text-lg font-bold text-white mb-1">El teu Codi Secret</h3>
+            <p class="text-xs text-slate-400 mb-5">Comparteix aquest codi amb la teva parella perquè pugui entrar al mateix registre de despeses des del seu mòbil.</p>
+            
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-center space-x-4 mb-6">
+                <span id="shareModalCodeDisplay" class="text-4xl font-black text-sky-400 tracking-widest">---</span>
+                <button id="copyCodeBtn" onclick="window.copyCoupleCode()" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center justify-center text-slate-300 transition-all duration-300 active:scale-95" title="Copiar codi">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+            </div>
+            
+            <div class="pt-4 border-t border-slate-800">
+                <button onclick="window.unlinkCoupleSpace()" class="w-full text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 py-2.5 rounded-xl text-xs font-bold transition-colors flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Desvincular-me d'aquest espai</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Imports i Lògica -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDocs, getDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==============================================================================
+        // CONFIGURACIÓ DE FIREBASE (REQUERIT PER SINCRONITZAR ENTRE MÒBILS)
+        // ==============================================================================
+        
+        // ENGANXA AQUÍ LA INFORMACIÓ DE LA TEVA IMATGE (image_36fbde.png)
+        const myFirebaseConfig = {
+            apiKey: "AIzaSyCKDSWhuPhQNIvTFZBX6y8OMvIM4ZNHF3k",
+            authDomain: "despeses-parella.firebaseapp.com",
+            projectId: "despeses-parella",
+            storageBucket: "despeses-parella.firebasestorage.app",
+            messagingSenderId: "27615087524",
+            appId: "1:27615087524:web:c38df3095050098f94cf31"
+        }; 
+        
+        // ==============================================================================
+
+        // Constants de l'entorn
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'despeses-parella-default';
+        
+        // Evitem errors de bloqueig si la configuració no és vàlida
+        let fbConfig = null;
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                fbConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+            } else if (myFirebaseConfig) {
+                fbConfig = myFirebaseConfig;
+            }
+        } catch (error) {
+            console.warn("No s'ha pogut carregar la configuració al núvol, s'utilitzarà el mode local.", error);
+        }
+        
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, currentUser;
+        
+        let EXPENSES_COLLECTION;
+        let SETTINGS_COLLECTION;
+
+        // Default categories as requested by user
+        const DEFAULT_CATEGORIES = [
+            { id: 'menjar', name: 'Menjar', icon: 'fa-utensils', color: 'emerald', limit: 400 },
+            { id: 'oci', name: 'Oci', icon: 'fa-martini-glass-citrus', color: 'purple', limit: 200 },
+            { id: 'casa', name: 'Casa', icon: 'fa-house-chimney', color: 'amber', limit: 500 },
+            { id: 'oci_marcal', name: 'Oci Marçal', icon: 'fa-gamepad', color: 'sky', limit: 150 },
+            { id: 'oci_laura', name: 'Oci Laura', icon: 'fa-heart', color: 'pink', limit: 150 }
+        ];
+
+        // Llista d'icones disponibles per al selector de l'usuari
+        const AVAILABLE_ICONS = [
+            { value: 'fa-utensils', label: '🍽️ Menjar / Restaurant' },
+            { value: 'fa-basket-shopping', label: '🧺 Supermercat' },
+            { value: 'fa-martini-glass-citrus', label: '🍹 Oci / Beguda' },
+            { value: 'fa-house-chimney', label: '🏠 Lloguer / Casa' },
+            { value: 'fa-bolt', label: '⚡ Llum / Energia' },
+            { value: 'fa-droplet', label: '💧 Aigua' },
+            { value: 'fa-wifi', label: '🌐 Internet / Mòbil' },
+            { value: 'fa-car', label: '🚗 Transport / Cotxe' },
+            { value: 'fa-gas-pump', label: '⛽ Gasolina' },
+            { value: 'fa-train', label: '🚆 Transport Públic' },
+            { value: 'fa-plane', label: '✈️ Viatges / Vols' },
+            { value: 'fa-cart-shopping', label: '🛒 Compres generals' },
+            { value: 'fa-shirt', label: '👕 Roba / Sabates' },
+            { value: 'fa-gamepad', label: '🎮 Videojocs' },
+            { value: 'fa-heart', label: '❤️ Parella / Bellesa' },
+            { value: 'fa-pills', label: '💊 Salut / Farmàcia' },
+            { value: 'fa-paw', label: '🐾 Mascotes' },
+            { value: 'fa-graduation-cap', label: '🎓 Educació / Cursos' },
+            { value: 'fa-dumbbell', label: '🏋️ Gimnàs / Esport' },
+            { value: 'fa-gift', label: '🎁 Regals' },
+            { value: 'fa-piggy-bank', label: '🐷 Estalvis' },
+            { value: 'fa-music', label: '🎵 Música / Concerts' },
+            { value: 'fa-film', label: '🎬 Cinema / Subscripcions' },
+            { value: 'fa-baby-carriage', label: '👶 Nens / Nadons' },
+            { value: 'fa-wrench', label: '🔧 Reparacions' },
+            { value: 'fa-mug-hot', label: '☕ Cafè / Esmorzar' },
+            { value: 'fa-star', label: '⭐ Preferit / Especial' },
+            { value: 'fa-box', label: '📦 Altres / Caixa' }
+        ];
+
+        const COLOR_CLASSES = {
+            emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', badgeBg: 'bg-emerald-500', bar: 'bg-emerald-500', iconBg: 'bg-emerald-500/20 text-emerald-400' },
+            purple: { bg: 'bg-purple-500/10', border: 'border-purple-500/30', text: 'text-purple-400', badgeBg: 'bg-purple-500', bar: 'bg-purple-500', iconBg: 'bg-purple-500/20 text-purple-400' },
+            amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', badgeBg: 'bg-amber-500', bar: 'bg-amber-500', iconBg: 'bg-amber-500/20 text-amber-400' },
+            sky: { bg: 'bg-sky-500/10', border: 'border-sky-500/30', text: 'text-sky-400', badgeBg: 'bg-sky-500', bar: 'bg-sky-500', iconBg: 'bg-sky-500/20 text-sky-400' },
+            pink: { bg: 'bg-pink-500/10', border: 'border-pink-500/30', text: 'text-pink-400', badgeBg: 'bg-pink-500', bar: 'bg-pink-500', iconBg: 'bg-pink-500/20 text-pink-400' },
+            rose: { bg: 'bg-rose-500/10', border: 'border-rose-500/30', text: 'text-rose-400', badgeBg: 'bg-rose-500', bar: 'bg-rose-500', iconBg: 'bg-rose-500/20 text-rose-400' },
+            indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-400', badgeBg: 'bg-indigo-500', bar: 'bg-indigo-500', iconBg: 'bg-indigo-500/20 text-indigo-400' },
+            teal: { bg: 'bg-teal-500/10', border: 'border-teal-500/30', text: 'text-teal-400', badgeBg: 'bg-teal-500', bar: 'bg-teal-500', iconBg: 'bg-teal-500/20 text-teal-400' }
+        };
+
+        const CHART_COLORS = {
+            emerald: '#10b981', purple: '#8b5cf6', amber: '#f59e0b',
+            sky: '#0ea5e9', pink: '#ec4899', rose: '#f43f5e',
+            indigo: '#6366f1', teal: '#14b8a6'
+        };
+
+        // App State
+        let categories = [...DEFAULT_CATEGORIES];
+        let expenses = [];
+        let person1Name = 'Marçal';
+        let person2Name = 'Laura';
+        let activeDate = new Date(); 
+        let activeCategory = null;
+        let coupleId = null;
+        let unsubscribeSettings = null;
+        let unsubscribeExpenses = null;
+        let expenseChartInstance = null;
+        
+        let allHistoricalExpenses = [];
+        let loadedHistoricalData = false;
+        
+        let isSettingsLoaded = false;
+        let isExpensesLoaded = false;
+
+        function checkHideLoader() {
+            if (isSettingsLoaded && isExpensesLoaded) {
+                const loader = document.getElementById('initialLoader');
+                if (loader && !loader.classList.contains('hidden')) {
+                    loader.classList.add('opacity-0');
+                    setTimeout(() => loader.classList.add('hidden'), 500);
+                }
+            }
+        }
+
+        async function initApp() {
+            // Temporitzador de seguretat: força el tancament de la càrrega al cap de 4s passi el que passi
+            setTimeout(() => {
+                hideLoaderForce();
+            }, 4000);
+
+            if (!fbConfig) {
+                console.warn("Utilitzant mode fora de línia (LocalStorage).");
+                document.getElementById('offlineBanner').classList.remove('hidden');
+                showSyncStatus(false);
+                document.getElementById('syncStatus').title = "Mode local (Sense sincronització al núvol)";
+                
+                const localCoupleId = localStorage.getItem('despeses_coupleId');
+                if (localCoupleId) {
+                    coupleId = localCoupleId;
+                    document.getElementById('displayCoupleCode').innerText = coupleId;
+                    initializeSharedCollections(coupleId);
+                } else {
+                    hideLoaderForce();
+                    document.getElementById('coupleLoginModal').classList.remove('hidden');
+                }
+                return;
+            }
+
+            const app = initializeApp(fbConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            try {
+                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+                else await signInAnonymously(auth);
+                
+                currentUser = auth.currentUser;
+                const prefRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'config');
+                const prefSnap = await getDoc(prefRef);
+                
+                if (prefSnap.exists() && prefSnap.data().coupleId) {
+                    coupleId = prefSnap.data().coupleId;
+                    document.getElementById('displayCoupleCode').innerText = coupleId;
+                    initializeSharedCollections(coupleId);
+                } else {
+                    hideLoaderForce();
+                    document.getElementById('coupleLoginModal').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error d'autenticació a Firebase:", error);
+                document.getElementById('offlineBanner').classList.remove('hidden');
+                showSyncStatus(false);
+                hideLoaderForce();
+            }
+        }
+
+        function hideLoaderForce() {
+            const loader = document.getElementById('initialLoader');
+            if (loader) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
+        }
+
+        window.joinCoupleSpace = async function(code) {
+            coupleId = code.toUpperCase();
+            
+            if (db && currentUser) {
+                const prefRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'config');
+                await setDoc(prefRef, { coupleId: coupleId });
+            } else {
+                localStorage.setItem('despeses_coupleId', coupleId);
+            }
+            
+            document.getElementById('coupleLoginModal').classList.add('hidden');
+            document.getElementById('shareCodeModal').classList.add('hidden');
+            document.getElementById('displayCoupleCode').innerText = coupleId;
+            
+            isSettingsLoaded = false;
+            isExpensesLoaded = false;
+            const loader = document.getElementById('initialLoader');
+            loader.classList.remove('hidden');
+            setTimeout(() => loader.classList.remove('opacity-0'), 10);
+            
+            // Temporitzador de seguretat per la càrrega manual
+            setTimeout(() => {
+                hideLoaderForce();
+            }, 4000);
+            
+            initializeSharedCollections(coupleId);
+            showCustomModal("Vinculació correcta", `Ara estàs connectat a l'espai de despeses: ${coupleId}.`, null, true);
+        }
+
+        window.createNewCouple = async function() {
+            const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            await window.joinCoupleSpace(newCode);
+        }
+
+        window.joinExistingCouple = async function() {
+            const code = document.getElementById('joinCodeInput').value.trim();
+            if (code.length < 3) {
+                showCustomModal("Codi invàlid", "El codi ha de tenir almenys 3 caràcters.", null, true);
+                return;
+            }
+            await window.joinCoupleSpace(code);
+        }
+        
+        window.openShareModal = function() {
+            document.getElementById('shareModalCodeDisplay').innerText = coupleId || '---';
+            document.getElementById('shareCodeModal').classList.remove('hidden');
+        }
+        
+        window.closeShareModal = function() {
+            document.getElementById('shareCodeModal').classList.add('hidden');
+        }
+        
+        window.unlinkCoupleSpace = function() {
+            showCustomModal("Desvincular Espai", "Estàs segur que vols sortir d'aquest espai de despeses? Hauràs d'introduir un codi nou o el mateix per tornar-les a veure.", async () => {
+                if (unsubscribeExpenses) unsubscribeExpenses();
+                if (unsubscribeSettings) unsubscribeSettings();
+                
+                if (!db) {
+                    localStorage.removeItem('despeses_coupleId');
+                }
+                
+                coupleId = null;
+                expenses = [];
+                allHistoricalExpenses = [];
+                loadedHistoricalData = false;
+                categories = [...DEFAULT_CATEGORIES];
+                document.getElementById('displayCoupleCode').innerText = '...';
+                
+                if (db && currentUser) {
+                    const prefRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'config');
+                    await setDoc(prefRef, { coupleId: null });
+                }
+                
+                window.closeShareModal();
+                document.getElementById('coupleLoginModal').classList.remove('hidden');
+                renderUI();
+            });
+        }
+
+        window.copyCoupleCode = function() {
+            if (!coupleId) return;
+            try {
+                if(navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(coupleId).then(updateCopyIconSuccess);
+                } else {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = coupleId;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    updateCopyIconSuccess();
+                }
+            } catch (err) {
+                showCustomModal("Error", "No s'ha pogut copiar el codi.", null, true);
+            }
+        }
+        
+        function updateCopyIconSuccess() {
+            const btn = document.getElementById('copyCodeBtn');
+            const icon = btn.querySelector('i');
+            icon.className = 'fa-solid fa-check text-emerald-400';
+            btn.classList.add('bg-emerald-500/20');
+            setTimeout(() => {
+                icon.className = 'fa-solid fa-copy';
+                btn.classList.remove('bg-emerald-500/20');
+            }, 2000);
+        }
+
+        function initializeSharedCollections(code) {
+            EXPENSES_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'expenses_' + code);
+            SETTINGS_COLLECTION = collection(db, 'artifacts', appId, 'public', 'data', 'settings_' + code);
+            setupDatabaseListeners();
+        }
+
+        function showSyncStatus(isOnline) {
+            const status = document.getElementById('syncStatus');
+            if (isOnline) {
+                status.className = "flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]";
+                status.title = "Connectat i sincronitzat en línia";
+            } else {
+                status.className = "flex h-2 w-2 rounded-full bg-rose-500";
+                status.title = "Desconnectat. Canvis no guardats.";
+            }
+        }
+
+        function setupDatabaseListeners() {
+            if (unsubscribeExpenses) unsubscribeExpenses();
+            if (unsubscribeSettings) unsubscribeSettings();
+
+            if (db) {
+                const docRef = doc(SETTINGS_COLLECTION, 'categories');
+                unsubscribeSettings = onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        categories = data.list || [...DEFAULT_CATEGORIES];
+                        if (data.users) {
+                            person1Name = data.users.p1 || 'Marçal';
+                            person2Name = data.users.p2 || 'Laura';
+                        }
+                    } else {
+                        setDoc(docRef, { 
+                            list: DEFAULT_CATEGORIES,
+                            users: { p1: 'Marçal', p2: 'Laura' }
+                        });
+                    }
+                    
+                    isSettingsLoaded = true;
+                    checkHideLoader();
+                    renderUI();
+                }, (error) => {
+                    console.error("Error escoltant settings:", error);
+                    showSyncStatus(false);
+                });
+            } else {
+                const savedSettings = localStorage.getItem('settings_' + coupleId);
+                if (savedSettings) {
+                    try {
+                        const data = JSON.parse(savedSettings);
+                        categories = data.list || [...DEFAULT_CATEGORIES];
+                        if (data.users) {
+                            person1Name = data.users.p1 || 'Marçal';
+                            person2Name = data.users.p2 || 'Laura';
+                        }
+                    } catch(e) { console.error(e); }
+                }
+                isSettingsLoaded = true;
+                checkHideLoader();
+                renderUI();
+            }
+
+            syncMonthData(getCurrentMonthKey());
+        }
+
+        function syncMonthData(monthKey) {
+            if (unsubscribeExpenses) unsubscribeExpenses();
+            
+            if (db) {
+                const monthQuery = query(EXPENSES_COLLECTION, where('monthKey', '==', monthKey));
+                
+                unsubscribeExpenses = onSnapshot(monthQuery, (snapshot) => {
+                    const newData = [];
+                    snapshot.forEach(doc => {
+                        newData.push({ id: doc.id, ...doc.data() });
+                    });
+                    expenses = newData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    showSyncStatus(true);
+                    
+                    isExpensesLoaded = true;
+                    checkHideLoader();
+                    
+                    renderUI();
+                    if (activeCategory) {
+                        updateCategoryModalData();
+                    }
+                    if (!document.getElementById('historyModal').classList.contains('hidden')) {
+                        if (document.getElementById('historyChartContainer').classList.contains('hidden')) {
+                            renderHistoryList();
+                        } else {
+                            loadedHistoricalData = false;
+                            window.showHistoryTab('chart');
+                        }
+                    }
+                }, (error) => {
+                    console.error("Error en escoltar despeses del mes:", error);
+                    showSyncStatus(false);
+                });
+            } else {
+                const savedExp = localStorage.getItem('expenses_' + coupleId);
+                let allExp = [];
+                if (savedExp) {
+                    try { allExp = JSON.parse(savedExp); } catch(e) {}
+                }
+                expenses = allExp.filter(e => e.monthKey === monthKey).sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                isExpensesLoaded = true;
+                checkHideLoader();
+                
+                renderUI();
+                if (activeCategory) {
+                    updateCategoryModalData();
+                }
+                if (!document.getElementById('historyModal').classList.contains('hidden')) {
+                    if (document.getElementById('historyChartContainer').classList.contains('hidden')) {
+                        renderHistoryList();
+                    } else {
+                        loadedHistoricalData = false;
+                        window.showHistoryTab('chart');
+                    }
+                }
+            }
+        }
+
+        function getCurrentMonthKey() {
+            return `${activeDate.getFullYear()}-${(activeDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        }
+
+        function formatDateReadable(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ca-ES', { day: '2-digit', month: 'short' });
+        }
+        
+        function formatMonthReadable(dateObj) {
+            return dateObj.toLocaleDateString('ca-ES', { month: 'long', year: 'numeric' });
+        }
+        
+        function escapeHtml(unsafe) {
+            if(!unsafe) return "";
+            return unsafe
+                .toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // --- Helpers de Payer per retrocompatibilitat ---
+        function getNormalizedPayer(payer) {
+            if (!payer) return 'shared';
+            if (payer === 'Marçal' || payer === 'p1') return 'p1';
+            if (payer === 'Laura' || payer === 'p2') return 'p2';
+            if (payer === 'Compartit' || payer === 'shared') return 'shared';
+            return payer;
+        }
+
+        function getPayerDisplayName(payer) {
+            const norm = getNormalizedPayer(payer);
+            if (norm === 'p1') return person1Name;
+            if (norm === 'p2') return person2Name;
+            if (norm === 'shared') return 'Compartit';
+            return payer;
+        }
+        // ------------------------------------------------
+
+        function renderUI() {
+            const monthKey = getCurrentMonthKey();
+            document.getElementById('currentMonthLabel').innerText = formatMonthReadable(activeDate);
+
+            const currentMonthExpenses = expenses.filter(exp => exp.monthKey === monthKey);
+
+            let totalAmount = 0;
+            let totalLimit = 0;
+            let totalMarcal = 0;
+            let totalLaura = 0;
+            let totalCompartit = 0;
+
+            categories.forEach(cat => {
+                if(cat.limit) totalLimit += parseFloat(cat.limit);
+            });
+
+            currentMonthExpenses.forEach(exp => {
+                const amt = parseFloat(exp.amount);
+                totalAmount += amt;
+                
+                const normPayer = getNormalizedPayer(exp.payer);
+                if(normPayer === 'p1') totalMarcal += amt;
+                else if(normPayer === 'p2') totalLaura += amt;
+                else if(normPayer === 'shared') totalCompartit += amt;
+            });
+
+            document.getElementById('globalTotalAmount').innerText = totalAmount.toFixed(2) + ' €';
+            document.getElementById('globalTotalLimit').innerText = totalLimit > 0 ? totalLimit.toFixed(0) + ' €' : 'No def.';
+            
+            document.getElementById('totalMarcal').innerText = totalMarcal.toFixed(0) + ' €';
+            document.getElementById('totalLaura').innerText = totalLaura.toFixed(0) + ' €';
+            document.getElementById('totalCompartit').innerText = totalCompartit.toFixed(0) + ' €';
+
+            let globalPercent = 0;
+            if (totalLimit > 0) {
+                globalPercent = Math.min((totalAmount / totalLimit) * 100, 100);
+            }
+            const gBar = document.getElementById('globalProgressBar');
+            gBar.style.width = globalPercent + '%';
+            if (globalPercent > 90) gBar.className = 'h-full rounded-full transition-all duration-500 bg-rose-500';
+            else if (globalPercent > 70) gBar.className = 'h-full rounded-full transition-all duration-500 bg-amber-500';
+            else gBar.className = 'h-full rounded-full transition-all duration-500 bg-emerald-500';
+
+            // Actualitzar etiquetes globals amb els noms dinàmics
+            document.getElementById('labelPerson1').innerText = person1Name;
+            document.getElementById('labelPerson2').innerText = person2Name;
+            
+            if(document.getElementById('optPayer1')) document.getElementById('optPayer1').innerText = person1Name;
+            if(document.getElementById('optPayer2')) document.getElementById('optPayer2').innerText = person2Name;
+            
+            if(document.getElementById('optSearchPayer1')) document.getElementById('optSearchPayer1').innerText = person1Name;
+            if(document.getElementById('optSearchPayer2')) document.getElementById('optSearchPayer2').innerText = person2Name;
+
+            const grid = document.getElementById('categoriesGrid');
+            grid.innerHTML = '';
+
+            categories.forEach(cat => {
+                const catExpenses = currentMonthExpenses.filter(e => e.categoryId === cat.id);
+                const catTotal = catExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+                
+                let isExceeded = cat.limit && catTotal > cat.limit;
+                let pct = 0;
+                if(cat.limit) pct = Math.min((catTotal / cat.limit) * 100, 100);
+
+                const cCls = COLOR_CLASSES[cat.color] || COLOR_CLASSES.emerald;
+                
+                const cardBorder = isExceeded ? 'border-rose-500/80 bg-rose-950/30' : `border-slate-700/50 bg-slate-800/40`;
+                const progressColor = isExceeded ? 'bg-rose-500' : cCls.bar;
+                const iconColor = isExceeded ? COLOR_CLASSES.rose.iconBg : cCls.iconBg;
+                const safeCatName = escapeHtml(cat.name);
+
+                grid.innerHTML += `
+                    <div onclick="window.openCategoryModal('${cat.id}')" class="rounded-2xl p-4 border ${cardBorder} shadow-lg cursor-pointer hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 group relative overflow-hidden">
+                        ${isExceeded ? '<div class="absolute -top-6 -right-6 w-16 h-16 bg-rose-500/20 rounded-full blur-xl"></div>' : ''}
+                        
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg ${iconColor} transition-transform group-hover:scale-110">
+                                <i class="fa-solid ${cat.icon}"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-slate-500 font-medium">Límit</div>
+                                <div class="text-xs font-bold text-slate-300">${cat.limit ? cat.limit+'€' : '∞'}</div>
+                            </div>
+                        </div>
+                        
+                        <h3 class="text-sm font-bold text-slate-200 leading-snug truncate">${safeCatName}</h3>
+                        <div class="text-lg font-black text-white mt-1">${catTotal.toFixed(2)} €</div>
+                        
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 mt-3 overflow-hidden border border-slate-700/50">
+                            <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                        
+                        ${isExceeded ? '<div class="absolute top-2 right-2 text-[9px] bg-rose-500 text-white px-1.5 py-0.5 rounded font-bold uppercase animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]">Superat!</div>' : ''}
+                    </div>
+                `;
+            });
+        }
+
+        window.openCategoryModal = function(catId) {
+            activeCategory = categories.find(c => c.id === catId);
+            if (!activeCategory) return;
+
+            document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+            updateCategoryModalData();
+            
+            const modal = document.getElementById('categoryModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.children[0].classList.add('translate-y-0');
+            }, 10);
+        }
+
+        window.closeCategoryModal = function() {
+            const modal = document.getElementById('categoryModal');
+            modal.children[0].classList.remove('translate-y-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                activeCategory = null;
+            }, 200);
+        }
+
+        function updateCategoryModalData() {
+            if (!activeCategory) return;
+            
+            const safeName = escapeHtml(activeCategory.name);
+
+            document.getElementById('catModalTitle').innerText = safeName;
+            
+            const iconBg = document.getElementById('catModalIconBg');
+            const icon = document.getElementById('catModalIcon');
+            const cCls = COLOR_CLASSES[activeCategory.color] || COLOR_CLASSES.emerald;
+            
+            iconBg.className = `w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ${cCls.iconBg}`;
+            icon.className = `fa-solid ${activeCategory.icon}`;
+            document.getElementById('catModalLimitText').innerText = `Límit: ${activeCategory.limit ? activeCategory.limit + ' €' : 'Sense límit'}`;
+
+            const monthKey = getCurrentMonthKey();
+            const catExpenses = expenses.filter(e => e.categoryId === activeCategory.id && e.monthKey === monthKey);
+            const catTotal = catExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+            
+            document.getElementById('catModalAmount').innerText = catTotal.toFixed(2) + ' €';
+
+            let isExceeded = activeCategory.limit && catTotal > activeCategory.limit;
+            let pct = 0;
+            if(activeCategory.limit) pct = Math.min((catTotal / activeCategory.limit) * 100, 100);
+
+            const progressBar = document.getElementById('catModalProgressBar');
+            progressBar.style.width = pct + '%';
+            progressBar.className = `h-full rounded-full transition-all duration-300 ${isExceeded ? 'bg-rose-500' : cCls.bar}`;
+            
+            const banner = document.getElementById('catModalBanner');
+            if(isExceeded) {
+                banner.classList.add('border-rose-500', 'bg-rose-950/40');
+                document.getElementById('catModalAlert').classList.remove('hidden');
+                triggerConfetti(true);
+            } else {
+                banner.classList.remove('border-rose-500', 'bg-rose-950/40');
+                document.getElementById('catModalAlert').classList.add('hidden');
+            }
+
+            const listDiv = document.getElementById('catExpenseList');
+            listDiv.innerHTML = '';
+            
+            if (catExpenses.length === 0) {
+                listDiv.innerHTML = `<div class="text-center py-6 text-slate-500 text-sm"><i class="fa-solid fa-ghost text-2xl block mb-2 opacity-30"></i> Cap despesa aquest mes</div>`;
+            } else {
+                catExpenses.forEach(exp => {
+                    const safeConcept = escapeHtml(exp.concept);
+                    const normPayer = getNormalizedPayer(exp.payer);
+                    const displayName = getPayerDisplayName(exp.payer);
+                    
+                    let payerIcon = normPayer === 'p1' ? '<i class="fa-solid fa-user text-sky-400"></i>' : 
+                                    normPayer === 'p2' ? '<i class="fa-solid fa-user text-pink-400"></i>' : 
+                                    '<i class="fa-solid fa-users text-amber-400"></i>';
+
+                    listDiv.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">
+                                    ${payerIcon}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-200">${safeConcept}</div>
+                                    <div class="text-[10px] text-slate-400">${formatDateReadable(exp.date)} · ${displayName}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="font-bold text-white">${parseFloat(exp.amount).toFixed(2)} €</span>
+                                <button onclick="window.deleteExpense('${exp.id}')" class="text-slate-500 hover:text-rose-400 transition-colors" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        window.addQuickAmount = function(val) {
+            const input = document.getElementById('expenseAmount');
+            let current = parseFloat(input.value) || 0;
+            input.value = (current + val).toFixed(2);
+            input.classList.add('animate-bounce-short');
+            setTimeout(() => input.classList.remove('animate-bounce-short'), 400);
+        }
+
+        window.handleExpenseSubmit = async function(e) {
+            e.preventDefault();
+            if(!activeCategory) return;
+
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            const concept = document.getElementById('expenseConcept').value;
+            const payer = document.getElementById('expensePayer').value;
+            const date = document.getElementById('expenseDate').value;
+
+            if(!amount || !concept || !date) return;
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-lg"></i>';
+
+            try {
+                if (db) {
+                    const newDocRef = doc(EXPENSES_COLLECTION);
+                    await setDoc(newDocRef, {
+                        categoryId: activeCategory.id,
+                        amount: amount,
+                        concept: concept,
+                        payer: payer,
+                        date: date,
+                        monthKey: date.substring(0, 7)
+                    });
+                } else {
+                    const newExp = {
+                        id: 'exp_' + Date.now() + Math.floor(Math.random()*1000),
+                        categoryId: activeCategory.id,
+                        amount: amount,
+                        concept: concept,
+                        payer: payer,
+                        date: date,
+                        monthKey: date.substring(0, 7)
+                    };
+                    const savedExp = localStorage.getItem('expenses_' + coupleId);
+                    let allExp = savedExp ? JSON.parse(savedExp) : [];
+                    allExp.push(newExp);
+                    localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
+                    syncMonthData(getCurrentMonthKey());
+                }
+                
+                loadedHistoricalData = false;
+                triggerConfetti(false);
+                
+                document.getElementById('expenseAmount').value = '';
+                document.getElementById('expenseConcept').value = '';
+                
+            } catch (err) {
+                console.error(err);
+                showCustomModal("Error", "No s'ha pogut guardar la despesa.", null, true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i><span>Afegir Despesa</span>';
+            }
+        }
+
+        window.deleteExpense = function(id) {
+            showCustomModal("Eliminar Despesa", "Estàs segur que vols eliminar aquesta despesa? Aquesta acció no es pot desfer.", async () => {
+                try {
+                    if (db) {
+                        await deleteDoc(doc(EXPENSES_COLLECTION, id));
+                    } else {
+                        const savedExp = localStorage.getItem('expenses_' + coupleId);
+                        let allExp = savedExp ? JSON.parse(savedExp) : [];
+                        allExp = allExp.filter(e => e.id !== id);
+                        localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
+                        syncMonthData(getCurrentMonthKey());
+                    }
+                    loadedHistoricalData = false;
+                } catch(err) {
+                    console.error(err);
+                }
+            });
+        }
+
+        window.openHistoryModal = function() {
+            if(document.getElementById('searchHistoryText')) document.getElementById('searchHistoryText').value = '';
+            if(document.getElementById('searchHistoryPayer')) document.getElementById('searchHistoryPayer').value = '';
+            if(document.getElementById('searchHistoryDate')) document.getElementById('searchHistoryDate').value = '';
+
+            document.getElementById('historyModal').classList.remove('hidden');
+            document.getElementById('historyMonthText').innerText = formatMonthReadable(activeDate);
+            window.showHistoryTab('list');
+        }
+
+        window.closeHistoryModal = function() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        window.showHistoryTab = function(tabName) {
+            const listBtn = document.getElementById('tabListBtn');
+            const chartBtn = document.getElementById('tabChartBtn');
+            const listDiv = document.getElementById('allExpensesList');
+            const filtersDiv = document.getElementById('historyListFilters');
+            const chartDiv = document.getElementById('historyChartContainer');
+
+            if (tabName === 'list') {
+                listBtn.className = "flex-1 py-2.5 text-sm font-bold text-sky-400 border-b-2 border-sky-400 transition-colors";
+                chartBtn.className = "flex-1 py-2.5 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-colors";
+                listDiv.classList.remove('hidden');
+                if(filtersDiv) filtersDiv.classList.remove('hidden');
+                chartDiv.classList.add('hidden');
+                renderHistoryList();
+            } else {
+                chartBtn.className = "flex-1 py-2.5 text-sm font-bold text-sky-400 border-b-2 border-sky-400 transition-colors";
+                listBtn.className = "flex-1 py-2.5 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-300 transition-colors";
+                chartDiv.classList.remove('hidden');
+                listDiv.classList.add('hidden');
+                if(filtersDiv) filtersDiv.classList.add('hidden');
+                
+                if (!loadedHistoricalData) {
+                    loadHistoricalDataForChart();
+                } else {
+                    renderHistoryChart();
+                }
+            }
+        }
+
+        async function loadHistoricalDataForChart() {
+            const canvasContainer = document.getElementById('historyChartContainer');
+            
+            if (!expenseChartInstance) {
+                const loadingMsg = document.createElement('div');
+                loadingMsg.id = 'chartLoadingMsg';
+                loadingMsg.className = 'absolute inset-0 flex items-center justify-center bg-slate-950/80 z-10 text-sky-400 text-xs font-bold rounded-xl';
+                loadingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Carregant historial complet...';
+                canvasContainer.querySelector('div.relative').appendChild(loadingMsg);
+            }
+
+            try {
+                if (db) {
+                    const snap = await getDocs(EXPENSES_COLLECTION);
+                    allHistoricalExpenses = [];
+                    snap.forEach(doc => allHistoricalExpenses.push({ id: doc.id, ...doc.data() }));
+                } else {
+                    const savedExp = localStorage.getItem('expenses_' + coupleId);
+                    allHistoricalExpenses = savedExp ? JSON.parse(savedExp) : [];
+                }
+                loadedHistoricalData = true;
+                renderHistoryChart();
+            } catch(e) {
+                console.error("Error carregant dades pel gràfic:", e);
+                showCustomModal("Error", "No s'ha pogut carregar l'historial complet.", null, true);
+            } finally {
+                const msg = document.getElementById('chartLoadingMsg');
+                if (msg) msg.remove();
+            }
+        }
+
+        function renderHistoryList() {
+            const listDiv = document.getElementById('allExpensesList');
+            const monthKey = getCurrentMonthKey();
+            
+            const searchText = (document.getElementById('searchHistoryText')?.value || '').toLowerCase();
+            const searchPayer = document.getElementById('searchHistoryPayer')?.value || '';
+            const searchDate = document.getElementById('searchHistoryDate')?.value || '';
+
+            const filtered = expenses.filter(e => {
+                if (e.monthKey !== monthKey) return false;
+                if (searchText && !e.concept.toLowerCase().includes(searchText)) return false;
+                if (searchPayer && getNormalizedPayer(e.payer) !== searchPayer) return false;
+                if (searchDate && e.date !== searchDate) return false;
+                return true;
+            });
+            
+            listDiv.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                listDiv.innerHTML = `<div class="text-center py-10 text-slate-500 text-sm"><i class="fa-solid fa-folder-open text-3xl block mb-2 opacity-30"></i> No s'han trobat registres amb aquests filtres</div>`;
+                return;
+            }
+
+            const groups = {};
+            filtered.forEach(exp => {
+                if(!groups[exp.date]) groups[exp.date] = [];
+                groups[exp.date].push(exp);
+            });
+
+            const sortedDates = Object.keys(groups).sort((a,b) => new Date(b) - new Date(a));
+
+            sortedDates.forEach(dateStr => {
+                listDiv.innerHTML += `<div class="text-xs font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-slate-900 py-1 border-b border-slate-800">${formatDateReadable(dateStr)}</div>`;
+                
+                groups[dateStr].forEach(exp => {
+                    const cat = categories.find(c => c.id === exp.categoryId);
+                    const safeConcept = escapeHtml(exp.concept);
+                    const normPayer = getNormalizedPayer(exp.payer);
+                    const displayName = getPayerDisplayName(exp.payer);
+                    
+                    const iconHTML = cat ? `<i class="fa-solid ${cat.icon} ${COLOR_CLASSES[cat.color]?.text}"></i>` : '<i class="fa-solid fa-question"></i>';
+                    let payerIcon = normPayer === 'p1' ? '<i class="fa-solid fa-user text-sky-400"></i>' : 
+                                    normPayer === 'p2' ? '<i class="fa-solid fa-user text-pink-400"></i>' : 
+                                    '<i class="fa-solid fa-users text-amber-400"></i>';
+
+                    listDiv.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                                    ${iconHTML}
+                                </div>
+                                <div>
+                                    <div class="text-sm font-bold text-slate-200">${safeConcept}</div>
+                                    <div class="text-[10px] text-slate-400 flex items-center space-x-1">
+                                        <span>${payerIcon}</span> <span>${displayName}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="font-bold text-white">${parseFloat(exp.amount).toFixed(2)} €</span>
+                                <button onclick="window.deleteExpense('${exp.id}')" class="text-slate-500 hover:text-rose-400"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+        window.renderHistoryList = renderHistoryList;
+
+        function renderHistoryChart() {
+            const canvas = document.getElementById('expensesChart');
+            if(!canvas) return;
+
+            if (expenseChartInstance) {
+                expenseChartInstance.destroy();
+            }
+
+            const monthsSet = new Set(allHistoricalExpenses.map(e => e.monthKey));
+            let monthsArray = Array.from(monthsSet).sort();
+            if(monthsArray.length === 0) monthsArray = [getCurrentMonthKey()];
+
+            const datasets = categories.map(cat => {
+                const data = monthsArray.map(mKey => {
+                    const total = allHistoricalExpenses.filter(e => e.monthKey === mKey && e.categoryId === cat.id)
+                                          .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+                    return total;
+                });
+
+                return {
+                    label: cat.name,
+                    data: data,
+                    borderColor: CHART_COLORS[cat.color] || '#cbd5e1',
+                    backgroundColor: (CHART_COLORS[cat.color] || '#cbd5e1') + '20',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: CHART_COLORS[cat.color] || '#cbd5e1'
+                };
+            });
+
+            const labels = monthsArray.map(m => {
+                const [y, mo] = m.split('-');
+                return `${mo}/${y.substring(2)}`;
+            });
+
+            expenseChartInstance = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    color: '#94a3b8',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: {size: 10} } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 10} } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: {size: 10} } }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                }
+            });
+        }
+
+        window.exportToExcel = function() {
+            if(!window.XLSX) {
+                showCustomModal("Error", "Carregant llibreria d'exportació, si us plau espera un moment.", null, true);
+                return;
+            }
+
+            const monthKey = getCurrentMonthKey();
+            const filtered = expenses.filter(e => e.monthKey === monthKey);
+            
+            if(filtered.length === 0) {
+                showCustomModal("Sense dades", "No hi ha despeses aquest mes per exportar.", null, true);
+                return;
+            }
+
+            const dataToExport = filtered.map(exp => {
+                const cat = categories.find(c => c.id === exp.categoryId);
+                return {
+                    'Data': exp.date,
+                    'Categoria': cat ? cat.name : 'Desconeguda',
+                    'Concepte': exp.concept,
+                    'Pagador': getPayerDisplayName(exp.payer),
+                    'Import (€)': parseFloat(exp.amount)
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Despeses " + monthKey);
+            
+            XLSX.writeFile(workbook, `Despeses_Parella_${monthKey}.xlsx`);
+        }
+
+        window.openSettingsModal = function() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            document.getElementById('inputSettingsPerson1').value = person1Name;
+            document.getElementById('inputSettingsPerson2').value = person2Name;
+            window.renderSettingsList();
+        }
+
+        window.closeSettingsModal = function() {
+            document.getElementById('settingsModal').classList.add('hidden');
+            renderUI(); 
+        }
+
+        window.renderSettingsList = function() {
+            const listDiv = document.getElementById('limitsCategoryList');
+            listDiv.innerHTML = '';
+            
+            categories.forEach((cat, index) => {
+                const safeName = escapeHtml(cat.name);
+                
+                // Generar les opcions del select de forma dinàmica
+                let iconOptionsHtml = AVAILABLE_ICONS.map(iconObj => {
+                    const isSelected = cat.icon === iconObj.value ? 'selected' : '';
+                    return `<option value="${iconObj.value}" ${isSelected}>${iconObj.label}</option>`;
+                }).join('');
+                
+                // Si la categoria té una icona guardada que no està a la nostra llista (compatibilitat cap enrere)
+                if (!AVAILABLE_ICONS.some(i => i.value === cat.icon)) {
+                    iconOptionsHtml += `<option value="${cat.icon}" selected>Icona actual (${cat.icon})</option>`;
+                }
+
+                listDiv.innerHTML += `
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group" data-index="${index}">
+                        <button onclick="window.deleteCategory(${index})" class="absolute top-2 right-2 w-7 h-7 bg-rose-500/10 text-rose-400 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Eliminar categoria">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                        
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Nom</label>
+                                <input type="text" class="cat-name w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" value="${safeName}">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Límit (€)</label>
+                                <input type="number" class="cat-limit w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" value="${cat.limit || ''}" placeholder="Sense límit">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Color</label>
+                                <select class="cat-color w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                                    ${Object.keys(COLOR_CLASSES).map(color => `<option value="${color}" ${cat.color === color ? 'selected' : ''}>${color.charAt(0).toUpperCase() + color.slice(1)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Icona</label>
+                                <select class="cat-icon w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                                    ${iconOptionsHtml}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            listDiv.innerHTML += `
+                <button onclick="window.addCategory()" class="w-full py-3 border-2 border-dashed border-slate-700 rounded-xl text-slate-400 font-bold text-xs hover:border-sky-500 hover:text-sky-400 transition-colors">
+                    <i class="fa-solid fa-plus mr-1"></i> Afegir Nova Categoria
+                </button>
+            `;
+        }
+
+        window.addCategory = function() {
+            categories.push({
+                id: 'cat_' + Date.now(),
+                name: 'Nova Categoria',
+                icon: 'fa-box',
+                color: 'sky',
+                limit: 0
+            });
+            window.renderSettingsList();
+        }
+
+        window.deleteCategory = function(index) {
+            showCustomModal("Eliminar Categoria", "Aquesta categoria s'esborrarà. Les despeses ja fetes quedaran registrades però sense categoria visual correcta. Continuar?", () => {
+                categories.splice(index, 1);
+                window.renderSettingsList();
+            });
+        }
+
+        window.collectCategoryInputs = function() {
+            const items = document.querySelectorAll('#limitsCategoryList > div.relative');
+            const newCats = [];
+            items.forEach((item, index) => {
+                const orig = categories[index];
+                newCats.push({
+                    id: orig.id,
+                    name: item.querySelector('.cat-name').value || 'Sense Nom',
+                    icon: item.querySelector('.cat-icon').value || 'fa-box',
+                    color: item.querySelector('.cat-color').value || 'emerald',
+                    limit: parseFloat(item.querySelector('.cat-limit').value) || 0
+                });
+            });
+            return newCats;
+        }
+
+        window.saveCategoriesAndClose = async function() {
+            const newCats = window.collectCategoryInputs();
+            const newP1 = document.getElementById('inputSettingsPerson1').value.trim() || 'Persona 1';
+            const newP2 = document.getElementById('inputSettingsPerson2').value.trim() || 'Persona 2';
+            
+            categories = newCats;
+            person1Name = newP1;
+            person2Name = newP2;
+            
+            try {
+                if (db) {
+                    await setDoc(doc(SETTINGS_COLLECTION, 'categories'), { 
+                        list: categories,
+                        users: { p1: person1Name, p2: person2Name }
+                    });
+                } else {
+                    localStorage.setItem('settings_' + coupleId, JSON.stringify({
+                        list: categories,
+                        users: { p1: person1Name, p2: person2Name }
+                    }));
+                    renderUI();
+                }
+                window.closeSettingsModal();
+            } catch (err) {
+                console.error("Error guardant configuració:", err);
+                showCustomModal("Error", "No s'ha pogut desar la configuració al núvol.", null, true);
+            }
+        }
+
+        window.confirmResetCurrentMonth = function() {
+            showCustomModal("ATENCIÓ PERILL", "Aquesta acció esborrarà TOTES les despeses d'aquest mes per a tots dos usuaris de forma irreversible. N'estàs totalment segur?", async () => {
+                const monthKey = getCurrentMonthKey();
+                
+                if (db) {
+                    const toDelete = expenses.filter(e => e.monthKey === monthKey);
+                    
+                    let deletedCount = 0;
+                    for(const exp of toDelete) {
+                        await deleteDoc(doc(EXPENSES_COLLECTION, exp.id));
+                        deletedCount++;
+                    }
+                    showCustomModal("Èxit", `S'han eliminat ${deletedCount} despeses del mes de ${formatMonthReadable(activeDate)}.`, null, true);
+                } else {
+                    const savedExp = localStorage.getItem('expenses_' + coupleId);
+                    let allExp = savedExp ? JSON.parse(savedExp) : [];
+                    const originalLength = allExp.length;
+                    allExp = allExp.filter(e => e.monthKey !== monthKey);
+                    localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
+                    syncMonthData(monthKey);
+                    showCustomModal("Èxit", `S'han eliminat ${originalLength - allExp.length} despeses del mes de ${formatMonthReadable(activeDate)}.`, null, true);
+                }
+                
+                loadedHistoricalData = false;
+                window.closeSettingsModal();
+            });
+        }
+
+        function triggerConfetti(isAlert = false) {
+            if (typeof confetti !== 'function') return;
+            if (isAlert) {
+                confetti({
+                    particleCount: 40,
+                    spread: 60,
+                    colors: ['#f43f5e', '#be123c', '#ffffff'],
+                    origin: { y: 0.3 }
+                });
+            } else {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#38bdf8', '#818cf8', '#34d399']
+                });
+            }
+        }
+
+        function showCustomModal(title, message, onConfirm, isAlert = false) {
+            document.getElementById('customModalTitle').innerText = title;
+            document.getElementById('customModalMessage').innerText = message;
+            
+            const btnConfirm = document.getElementById('customModalConfirm');
+            const icon = document.getElementById('customModalIcon');
+            
+            if (isAlert) {
+                btnConfirm.classList.add('hidden');
+                icon.className = "w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto text-xl mb-3";
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                document.getElementById('customModalCancel').innerText = "D'acord";
+            } else {
+                btnConfirm.classList.remove('hidden');
+                icon.className = "w-12 h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto text-xl mb-3";
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+                document.getElementById('customModalCancel').innerText = "Cancel·lar";
+                
+                btnConfirm.onclick = () => {
+                    if(onConfirm) onConfirm();
+                    document.getElementById('customModal').classList.add('hidden');
+                };
+            }
+
+            document.getElementById('customModalCancel').onclick = () => {
+                document.getElementById('customModal').classList.add('hidden');
+            };
+
+            document.getElementById('customModal').classList.remove('hidden');
+        }
+
+        window.scrollToTop = function() {
+            document.getElementById('app').scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        window.openQuickAddModal = function() {
+            window.openCategoryModal(categories[0].id);
+        }
+
+        function changeMonth(delta) {
+            activeDate.setMonth(activeDate.getMonth() + delta);
+            
+            syncMonthData(getCurrentMonthKey());
+            
+            renderUI();
+            if(!document.getElementById('historyModal').classList.contains('hidden')) {
+                document.getElementById('historyMonthText').innerText = formatMonthReadable(activeDate);
+                if (document.getElementById('historyChartContainer').classList.contains('hidden')) {
+                    renderHistoryList();
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
+            document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
+            initApp();
+        });
+
+    </script>
+</body>
+</html>
