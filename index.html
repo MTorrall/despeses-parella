@@ -147,14 +147,19 @@
                 </div>
             </div>
 
-<div class="flex items-center space-x-2">
-                <button onclick="window.toggleTheme()" id="mainThemeToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-slate-700 active:scale-95 shadow-sm" aria-label="Canviar tema" title="Canviar tema">
-                    <i id="mainThemeIcon" class="fa-solid fa-moon text-lg text-sky-400"></i>
+            <div class="flex items-center space-x-2">
+                <button onclick="window.openShareModal()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 transition-all font-bold text-xs flex items-center space-x-1 border border-slate-700" title="Codi de Vinculació">
+                    <i class="fa-solid fa-key"></i>
+                    <span id="displayCoupleCode">...</span>
                 </button>
+                <button onclick="window.toggleTheme()" id="mainThemeToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-slate-700 active:scale-95 shadow-sm" aria-label="Canviar tema" title="Canviar tema">
+    <i id="mainThemeIcon" class="fa-solid fa-moon text-lg text-sky-400"></i>
+</button>
                 <button onclick="window.openSettingsModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95" aria-label="Configuració de Límits" title="Configuració de Límit">
                     <i class="fa-solid fa-sliders"></i>
                 </button>
             </div>
+        </header>
 
         <!-- Resum Global del Mes -->
         <section class="p-4 bg-gradient-to-b from-slate-900 to-slate-950">
@@ -699,7 +704,7 @@
             }
         }
 
-async function initApp() {
+        async function initApp() {
             // Temporitzador de seguretat: força el tancament de la càrrega al cap de 4s passi el que passi
             setTimeout(() => {
                 hideLoaderForce();
@@ -714,7 +719,7 @@ async function initApp() {
                 const localCoupleId = localStorage.getItem('despeses_coupleId');
                 if (localCoupleId) {
                     coupleId = localCoupleId;
-                    // LÍNIA ELIMINADA: document.getElementById('displayCoupleCode').innerText = coupleId;
+                    document.getElementById('displayCoupleCode').innerText = coupleId;
                     document.getElementById('displayPairCode').innerText = coupleId;
                     initializeSharedCollections(coupleId);
                 } else {
@@ -738,7 +743,7 @@ async function initApp() {
                 
                 if (prefSnap.exists() && prefSnap.data().coupleId) {
                     coupleId = prefSnap.data().coupleId;
-                    // LÍNIA ELIMINADA: document.getElementById('displayCoupleCode').innerText = coupleId;
+                    document.getElementById('displayCoupleCode').innerText = coupleId;
                     document.getElementById('displayPairCode').innerText = coupleId;
                     initializeSharedCollections(coupleId);
                 } else {
@@ -761,35 +766,35 @@ async function initApp() {
             }
         }
 
-   window.joinCoupleSpace = async function(code) {
-        coupleId = code.toUpperCase();
-        
-        if (db && currentUser) {
-            const prefRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'config');
-            await setDoc(prefRef, { coupleId: coupleId });
-        } else {
-            localStorage.setItem('despeses_coupleId', coupleId);
+        window.joinCoupleSpace = async function(code) {
+            coupleId = code.toUpperCase();
+            
+            if (db && currentUser) {
+                const prefRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'preferences', 'config');
+                await setDoc(prefRef, { coupleId: coupleId });
+            } else {
+                localStorage.setItem('despeses_coupleId', coupleId);
+            }
+            
+            document.getElementById('coupleLoginModal').classList.add('hidden');
+            document.getElementById('shareCodeModal').classList.add('hidden');
+            document.getElementById('displayCoupleCode').innerText = coupleId;
+            document.getElementById('displayPairCode').innerText = coupleId;
+            
+            isSettingsLoaded = false;
+            isExpensesLoaded = false;
+            const loader = document.getElementById('initialLoader');
+            loader.classList.remove('hidden');
+            setTimeout(() => loader.classList.remove('opacity-0'), 10);
+            
+            // Temporitzador de seguretat per la càrrega manual
+            setTimeout(() => {
+                hideLoaderForce();
+            }, 4000);
+            
+            initializeSharedCollections(coupleId);
+            showCustomModal("Vinculació correcta", `Ara estàs connectat a l'espai de despeses: ${coupleId}.`, null, true);
         }
-        
-        document.getElementById('coupleLoginModal').classList.add('hidden');
-        document.getElementById('shareCodeModal').classList.add('hidden');
-        // LÍNIA ELIMINADA: document.getElementById('displayCoupleCode').innerText = coupleId;
-        document.getElementById('displayPairCode').innerText = coupleId;
-        
-        isSettingsLoaded = false;
-        isExpensesLoaded = false;
-        const loader = document.getElementById('initialLoader');
-        loader.classList.remove('hidden');
-        setTimeout(() => loader.classList.remove('opacity-0'), 10);
-        
-        // Temporitzador de seguretat per la càrrega manual
-        setTimeout(() => {
-            hideLoaderForce();
-        }, 4000);
-        
-        initializeSharedCollections(coupleId);
-        showCustomModal("Vinculació correcta", `Ara estàs connectat a l'espai de despeses: ${coupleId}.`, null, true);
-    }
 
         window.createNewCouple = async function() {
             const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
