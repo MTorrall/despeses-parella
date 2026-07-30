@@ -148,10 +148,7 @@
             </div>
 
             <div class="flex items-center space-x-2">
-                <button onclick="window.openShareModal()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 hover:text-sky-300 transition-all font-bold text-xs flex items-center space-x-1 border border-slate-700" title="Codi de Vinculació">
-                    <i class="fa-solid fa-key"></i>
-                    <span id="displayCoupleCode">...</span>
-                </button>
+              
                 <button onclick="window.toggleTheme()" id="mainThemeToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-slate-700 active:scale-95 shadow-sm" aria-label="Canviar tema" title="Canviar tema">
     <i id="mainThemeIcon" class="fa-solid fa-moon text-lg text-sky-400"></i>
 </button>
@@ -719,7 +716,7 @@
                 const localCoupleId = localStorage.getItem('despeses_coupleId');
                 if (localCoupleId) {
                     coupleId = localCoupleId;
-                    document.getElementById('displayCoupleCode').innerText = coupleId;
+                    // document.getElementById('displayCoupleCode').innerText = coupleId;
                     document.getElementById('displayPairCode').innerText = coupleId;
                     initializeSharedCollections(coupleId);
                 } else {
@@ -743,7 +740,7 @@
                 
                 if (prefSnap.exists() && prefSnap.data().coupleId) {
                     coupleId = prefSnap.data().coupleId;
-                    document.getElementById('displayCoupleCode').innerText = coupleId;
+                  //  document.getElementById('displayCoupleCode').innerText = coupleId;
                     document.getElementById('displayPairCode').innerText = coupleId;
                     initializeSharedCollections(coupleId);
                 } else {
@@ -778,7 +775,7 @@
             
             document.getElementById('coupleLoginModal').classList.add('hidden');
             document.getElementById('shareCodeModal').classList.add('hidden');
-            document.getElementById('displayCoupleCode').innerText = coupleId;
+            \\ document.getElementById('displayCoupleCode').innerText = coupleId;
             document.getElementById('displayPairCode').innerText = coupleId;
             
             isSettingsLoaded = false;
@@ -833,7 +830,7 @@
                 allHistoricalExpenses = [];
                 loadedHistoricalData = false;
                 categories = [...DEFAULT_CATEGORIES];
-                document.getElementById('displayCoupleCode').innerText = '...';
+               \\ document.getElementById('displayCoupleCode').innerText = '...';
                 document.getElementById('displayPairCode').innerText = '---';
                 
                 if (db && currentUser) {
