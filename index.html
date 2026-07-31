@@ -2055,43 +2055,39 @@ window.addEventListener('load', () => {
             loader.classList.add('hidden');
         }, 500);
     }
-    // --- LÒGICA SWIPE (Navegació tàctil Inici <-> Registre) ---
-    const appContainer = document.getElementById('app');
-    const historyModal = document.getElementById('historyModal');
-    
-    // Seleccionem el div intern del modal per aplicar-hi l'animació UX
-    const historyModalContent = historyModal ? historyModal.querySelector('.bg-slate-900') : null;
-
-    if (appContainer && historyModal && typeof Hammer !== 'undefined') {
+// --- LÒGICA SWIPE (Navegació tàctil Inici <-> Registre) ---
+    if (typeof Hammer !== 'undefined') {
+        // Inicialitzem Hammer al body per capturar els gestos globalment
+        // 'pan-y' permet que l'scroll vertical de les teves llistes continuï funcionant amb normalitat
+        const mcGlobal = new Hammer(document.body, { touchAction: 'pan-y' });
+        mcGlobal.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
         
-        // 1. SWIPE ESQUERRA a la pantalla principal -> Obre Registre
-        const mcApp = new Hammer(appContainer);
-        mcApp.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
-        
-        mcApp.on("swipeleft", () => {
-            // Comprovem si el modal està amagat (estem a l'Inici) i si no hi ha cap altre modal obert per sobre
+        mcGlobal.on("swipeleft", () => {
+            const historyModal = document.getElementById('historyModal');
             const settingsModal = document.getElementById('settingsModal');
             const categoryModal = document.getElementById('categoryModal');
             
-            if (historyModal.classList.contains('hidden') && 
-                settingsModal.classList.contains('hidden') && 
-                categoryModal.classList.contains('hidden')) {
+            // Si estem a l'inici (tots els modals tancats), obrim el registre
+            if (historyModal && historyModal.classList.contains('hidden') && 
+                settingsModal && settingsModal.classList.contains('hidden') && 
+                categoryModal && categoryModal.classList.contains('hidden')) {
                 
-                // Afegim l'efecte de lliscament (UX) i obrim el Registre
+                const historyModalContent = historyModal.querySelector('.bg-slate-900');
                 if (historyModalContent) historyModalContent.classList.add('slide-in-right');
+                
                 window.openHistoryModal();
             }
         });
 
-        // 2. SWIPE DRETA dins del Registre -> Torna a l'Inici
-        const mcHist = new Hammer(historyModal);
-        mcHist.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
-        
-        mcHist.on("swiperight", () => {
-            if (!historyModal.classList.contains('hidden')) {
+        mcGlobal.on("swiperight", () => {
+            const historyModal = document.getElementById('historyModal');
+            
+            // Si el modal de registre està obert, fem el swipe a la dreta per tancar-lo
+            if (historyModal && !historyModal.classList.contains('hidden')) {
                 window.closeHistoryModal();
                 
-                // Neteja la classe de l'animació perquè pugui tornar a funcionar la pròxima vegada
+                // Neteja la classe de l'animació un cop tancat
+                const historyModalContent = historyModal.querySelector('.bg-slate-900');
                 setTimeout(() => {
                     if (historyModalContent) historyModalContent.classList.remove('slide-in-right');
                 }, 300);
