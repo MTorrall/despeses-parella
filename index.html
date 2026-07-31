@@ -1945,35 +1945,62 @@
             initApp();
         });
 document.addEventListener('DOMContentLoaded', () => {
-            const btnCopiar = document.getElementById('btnCopiarCodi');
+    const btnCopiar = document.getElementById('btnCopiarCodi');
+    
+    if (btnCopiar) {
+        btnCopiar.addEventListener('click', () => {
+            const elementCodi = document.getElementById('displayPairCode');
+            if (!elementCodi) return;
             
-            if (btnCopiar) {
-                btnCopiar.addEventListener('click', () => {
-                    const elementCodi = document.getElementById('displayPairCode');
-                    if (!elementCodi) return;
+            const codi = elementCodi.innerText;
+            
+            // 1. Definim la funció d'èxit visual
+            const copySuccess = () => {
+                // Evitem el bug del doble clic: si ja està verd, no fem res
+                if (btnCopiar.innerHTML.includes('stroke="#4ade80"')) return;
                 
-                    const codi = elementCodi.innerText;
-                    
-                    navigator.clipboard.writeText(codi).then(() => {
-                        const iconaOriginal = btnCopiar.innerHTML; 
-                        
-                        btnCopiar.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                        `;
-                        
-                        setTimeout(() => {
-                            btnCopiar.innerHTML = iconaOriginal;
-                        }, 2000);
-                        
-                    }).catch(err => {
-                        console.error('Error en copiar el codi al porta-retalls: ', err);
+                const iconaOriginal = btnCopiar.innerHTML; 
+                
+                btnCopiar.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                `;
+                
+                setTimeout(() => {
+                    btnCopiar.innerHTML = iconaOriginal;
+                }, 2000);
+            };
+
+            // 2. Definim el pla B (per a mòbils antics o connexions HTTP locals)
+            const fallbackCopy = () => {
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = codi;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    copySuccess();
+                } catch (err) {
+                    console.error('Error en el fallback de còpia: ', err);
+                }
+            };
+
+            // 3. Executem l'API moderna; si falla o no existeix, saltem al pla B
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(codi)
+                    .then(copySuccess)
+                    .catch(err => {
+                        console.warn('API moderna fallida, utilitzant fallback...', err);
+                        fallbackCopy();
                     });
-                });
+            } else {
+                fallbackCopy();
             }
         });
-    </script>
+    }
+});
    <script>
 // Espera a que la pàgina carregui completament
 window.addEventListener('load', () => {
