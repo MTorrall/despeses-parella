@@ -64,27 +64,30 @@
         }
     </style>
 <!-- Estils per forçar el Mode Clar -->
+   <!-- Estils per forçar el Mode Clar -->
     <style id="lightModeStyles">
-        body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; }
+        /* Usem "background" en lloc de "background-color" per fulminar els degradats foscos */
+        body.light-mode { background: #f8fafc !important; color: #0f172a !important; }
         
-        /* Fons principals */
+        /* Fons principals i correcció de qualsevol contenidor amb degradat fosc */
         body.light-mode .bg-slate-950, 
-        body.light-mode .bg-slate-900 { background-color: #ffffff !important; }
-        body.light-mode .bg-slate-800 { background-color: #f1f5f9 !important; }
-        
-        /* Fons amb opacitat i difuminats (coberta ampla per evitar el recuadre fosc) */
+        body.light-mode .bg-slate-900,
         body.light-mode [class*="bg-slate-950"],
-        body.light-mode [class*="bg-slate-900"] { 
-            background-color: #ffffff !important; 
+        body.light-mode [class*="bg-slate-900"],
+        body.light-mode [class*="from-slate-900"] { 
+            background: #f8fafc !important; 
         }
         
+        body.light-mode .bg-slate-800 { background: #ffffff !important; }
+        
+        /* Fons amb opacitat i difuminats (transparències) */
         body.light-mode .bg-slate-950\/50, 
         body.light-mode .bg-slate-950\/60,
         body.light-mode .bg-slate-900\/60,
         body.light-mode .bg-slate-900\/90,
         body.light-mode .bg-slate-800\/40, 
         body.light-mode .bg-slate-800\/80 { 
-            background-color: rgba(255, 255, 255, 0.9) !important; 
+            background: rgba(255, 255, 255, 0.9) !important; 
             backdrop-filter: blur(8px); 
         }
         
@@ -103,19 +106,12 @@
         
         /* Inputs i Selects */
         body.light-mode input, 
-        body.light-mode select { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+        body.light-mode select { background: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
         
         /* Protecció de textos blancs en botons i elements acolorits */
         body.light-mode .text-white:not(button):not(.bg-gradient-to-tr):not(.bg-gradient-to-r):not(.bg-rose-500):not(.bg-rose-600):not(.bg-emerald-500):not(.bg-sky-500):not(.bg-amber-500):not(.bg-indigo-500):not(.bg-purple-500) {
             color: #0f172a !important;
         }
-        
-        /* Correcció completa de degradats de fons */
-        body.light-mode .from-slate-900,
-        body.light-mode .from-slate-950 { --tw-gradient-from: #f8fafc !important; --tw-gradient-to: rgb(248 250 252 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
-        
-        body.light-mode .to-slate-950,
-        body.light-mode .to-slate-900 { --tw-gradient-to: #f1f5f9 !important; }
     </style>
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
