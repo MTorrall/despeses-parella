@@ -68,9 +68,16 @@
         .slide-in-right {
             animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
         }
-        @keyframes slideIn {
+ @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Força que el swipe horitzontal funcioni a les àrees de scroll */
+        #historyModal, 
+        #historyModal .overflow-y-auto,
+        #historyModal .bg-slate-900 {
+            touch-action: pan-y !important;
         }
     </style>
 <!-- Estils per forçar el Mode Clar -->
@@ -2060,7 +2067,12 @@ window.addEventListener('load', () => {
         // Inicialitzem Hammer al body per capturar els gestos globalment
         // 'pan-y' permet que l'scroll vertical de les teves llistes continuï funcionant amb normalitat
         const mcGlobal = new Hammer(document.body, { touchAction: 'pan-y' });
-        mcGlobal.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
+        // Fem que el swipe sigui més fàcil de detectar dins de les llistes
+        mcGlobal.get('swipe').set({ 
+            direction: Hammer.DIRECTION_HORIZONTAL,
+            threshold: 10,      // Menys distància necessària per activar-lo
+            velocity: 0.2       // Menys velocitat necessària del dit
+        });
         
         mcGlobal.on("swipeleft", () => {
             const historyModal = document.getElementById('historyModal');
