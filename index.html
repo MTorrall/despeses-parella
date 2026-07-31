@@ -64,14 +64,25 @@
         }
     </style>
 <!-- Estils per forçar el Mode Clar -->
-   <!-- Estils per forçar el Mode Clar -->
-<!-- Estils per forçar el Mode Clar -->
     <style id="lightModeStyles">
-        /* Usem "background" en lloc de "background-color" per fulminar els degradats foscos */
-        body.light-mode { background: #f8fafc !important; color: #0f172a !important; }
-        
-        /* Fons principals i correcció de qualsevol contenidor amb degradat fosc */
-        body.light-mode .bg-slate-950, 
+
+    /* Usem "background" en lloc de "background-color" per fulminar els degradats foscos */
+html.light-mode,
+body.light-mode,
+body.light-mode #app { 
+    background-color: #f8fafc !important; 
+    background-image: none !important; /* Força l'eliminació de degradats */
+    color: #0f172a !important; 
+}
+
+/* Fons principals i correcció de qualsevol contenidor amb degradat fosc */
+body.light-mode .bg-slate-950, 
+body.light-mode .bg-slate-900,
+body.light-mode [class*="bg-slate-950"],
+body.light-mode [class*="bg-slate-900"],
+body.light-mode [class*="from-slate-900"] { 
+    background: #f8fafc !important; 
+}
         body.light-mode .bg-slate-900,
         body.light-mode [class*="bg-slate-950"],
         body.light-mode [class*="bg-slate-900"],
@@ -1900,28 +1911,29 @@
   // ==========================================
         // LÒGICA DEL TEMA CLAR/FOSC (Versió Definitiva)
         // ==========================================
-        window.toggleTheme = function() {
-            const body = document.body;
-            // Busquem la icona exclusivament pel seu ID nou de la pantalla principal
-            const mainIcon = document.getElementById('mainThemeIcon');
-            
-            // Alternem la classe del body
-            body.classList.toggle('light-mode');
-            const isLight = body.classList.contains('light-mode');
-            
-            // Canviem la icona segons el mode
-            if (isLight) {
-                if(mainIcon) {
-                    mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
-                }
-                localStorage.setItem('despeses_theme', 'light');
-            } else {
-                if(mainIcon) {
-                    mainIcon.className = 'fa-solid fa-moon text-lg text-sky-400';
-                }
-                localStorage.setItem('despeses_theme', 'dark');
-            }
-        };
+window.toggleTheme = function() {
+    const body = document.body;
+    const html = document.documentElement; // Seleccionem també l'HTML
+    const mainIcon = document.getElementById('mainThemeIcon');
+    
+    // Alternem la classe tant al body com a l'html
+    body.classList.toggle('light-mode');
+    html.classList.toggle('light-mode');
+    
+    const isLight = body.classList.contains('light-mode');
+    
+    if (isLight) {
+        if(mainIcon) {
+            mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
+        }
+        localStorage.setItem('despeses_theme', 'light');
+    } else {
+        if(mainIcon) {
+            mainIcon.className = 'fa-solid fa-moon text-lg text-sky-400';
+        }
+        localStorage.setItem('despeses_theme', 'dark');
+    }
+};
 
         // ==========================================
         // CÀRREGA INICIAL DE L'APLICACIÓ
@@ -1931,17 +1943,17 @@
             document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
             
             // Comprovem si l'usuari ja tenia el mode clar actiu
-            if (localStorage.getItem('despeses_theme') === 'light') {
-                document.body.classList.add('light-mode');
-                
-                // Forcem el canvi d'icona al sol automàticament
-                setTimeout(() => {
-                    const mainIcon = document.getElementById('mainThemeIcon');
-                    if(mainIcon) {
-                        mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
-                    }
-                }, 50);
-            }
+if (localStorage.getItem('despeses_theme') === 'light') {
+    document.body.classList.add('light-mode');
+    document.documentElement.classList.add('light-mode'); // Apliquem també a l'HTML en carregar
+    
+    setTimeout(() => {
+        const mainIcon = document.getElementById('mainThemeIcon');
+        if(mainIcon) {
+            mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
+        }
+    }, 50);
+}
             
             initApp();
         });
