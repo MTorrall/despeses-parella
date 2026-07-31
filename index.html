@@ -63,20 +63,30 @@
             50% { transform: translateY(-6px); }
         }
     </style>
-    <!-- Estils per forçar el Mode Clar -->
+<!-- Estils per forçar el Mode Clar -->
     <style id="lightModeStyles">
         body.light-mode { background-color: #f8fafc !important; color: #0f172a !important; }
+        
+        /* Fons principals */
         body.light-mode .bg-slate-950, 
         body.light-mode .bg-slate-900 { background-color: #ffffff !important; }
         body.light-mode .bg-slate-800 { background-color: #f1f5f9 !important; }
         
-        /* Fons amb opacitat i difuminats */
+        /* Fons amb opacitat i difuminats (coberta ampla per evitar el recuadre fosc) */
+        body.light-mode [class*="bg-slate-950"],
+        body.light-mode [class*="bg-slate-900"] { 
+            background-color: #ffffff !important; 
+        }
+        
         body.light-mode .bg-slate-950\/50, 
         body.light-mode .bg-slate-950\/60,
         body.light-mode .bg-slate-900\/60,
         body.light-mode .bg-slate-900\/90,
         body.light-mode .bg-slate-800\/40, 
-        body.light-mode .bg-slate-800\/80 { background-color: rgba(255, 255, 255, 0.9) !important; backdrop-filter: blur(8px); }
+        body.light-mode .bg-slate-800\/80 { 
+            background-color: rgba(255, 255, 255, 0.9) !important; 
+            backdrop-filter: blur(8px); 
+        }
         
         /* Vores */
         body.light-mode .border-slate-800, 
@@ -100,9 +110,12 @@
             color: #0f172a !important;
         }
         
-        /* Correcció de degradats de fons */
-        body.light-mode .from-slate-900 { --tw-gradient-from: #f8fafc !important; }
-        body.light-mode .to-slate-950 { --tw-gradient-to: #f1f5f9 !important; }
+        /* Correcció completa de degradats de fons */
+        body.light-mode .from-slate-900,
+        body.light-mode .from-slate-950 { --tw-gradient-from: #f8fafc !important; --tw-gradient-to: rgb(248 250 252 / 0) !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+        
+        body.light-mode .to-slate-950,
+        body.light-mode .to-slate-900 { --tw-gradient-to: #f1f5f9 !important; }
     </style>
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
