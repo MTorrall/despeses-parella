@@ -67,21 +67,38 @@
     <style id="lightModeStyles">
 
     /* Usem "background" en lloc de "background-color" per fulminar els degradats foscos */
+/* 1. Base general i contenidor principal */
 html.light-mode,
 body.light-mode,
 body.light-mode #app { 
     background-color: #f8fafc !important; 
-    background-image: none !important; /* Força l'eliminació de degradats */
+    background-image: none !important; 
     color: #0f172a !important; 
 }
 
-/* Fons principals i correcció de qualsevol contenidor amb degradat fosc */
+/* 2. Unificació de fons (elimina diferències de to entre seccions) */
 body.light-mode .bg-slate-950, 
 body.light-mode .bg-slate-900,
-body.light-mode [class*="bg-slate-950"],
-body.light-mode [class*="bg-slate-900"],
-body.light-mode [class*="from-slate-900"] { 
+body.light-mode .bg-slate-800,
+body.light-mode .bg-slate-700,
+body.light-mode [class*="bg-slate-"],
+body.light-mode [class*="from-slate-"] { 
     background: #f8fafc !important; 
+}
+
+/* 3. Eliminació d'ombres i vores residuals (elimina la línia horitzontal) */
+body.light-mode header,
+body.light-mode main,
+body.light-mode section,
+body.light-mode .sticky,
+body.light-mode [class*="shadow-md"],
+body.light-mode [class*="shadow-lg"] {
+    box-shadow: none !important;
+}
+
+body.light-mode [class*="border-slate-"],
+body.light-mode [class*="divide-slate-"] {
+    border-color: transparent !important;
 }
         body.light-mode .bg-slate-900,
         body.light-mode [class*="bg-slate-950"],
