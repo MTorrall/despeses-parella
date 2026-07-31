@@ -38,6 +38,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Hammer.js per als gestos tàctils -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     
     <style>
         html, body, button, input, select {
@@ -61,6 +63,14 @@
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-6px); }
+        }
+        /* Efecte Swipe UX per al modal de registre */
+        .slide-in-right {
+            animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 <!-- Estils per forçar el Mode Clar -->
@@ -2044,6 +2054,49 @@ window.addEventListener('load', () => {
         setTimeout(() => {
             loader.classList.add('hidden');
         }, 500);
+    }
+    // --- LÒGICA SWIPE (Navegació tàctil Inici <-> Registre) ---
+    const appContainer = document.getElementById('app');
+    const historyModal = document.getElementById('historyModal');
+    
+    // Seleccionem el div intern del modal per aplicar-hi l'animació UX
+    const historyModalContent = historyModal ? historyModal.querySelector('.bg-slate-900') : null;
+
+    if (appContainer && historyModal && typeof Hammer !== 'undefined') {
+        
+        // 1. SWIPE ESQUERRA a la pantalla principal -> Obre Registre
+        const mcApp = new Hammer(appContainer);
+        mcApp.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
+        
+        mcApp.on("swipeleft", () => {
+            // Comprovem si el modal està amagat (estem a l'Inici) i si no hi ha cap altre modal obert per sobre
+            const settingsModal = document.getElementById('settingsModal');
+            const categoryModal = document.getElementById('categoryModal');
+            
+            if (historyModal.classList.contains('hidden') && 
+                settingsModal.classList.contains('hidden') && 
+                categoryModal.classList.contains('hidden')) {
+                
+                // Afegim l'efecte de lliscament (UX) i obrim el Registre
+                if (historyModalContent) historyModalContent.classList.add('slide-in-right');
+                window.openHistoryModal();
+            }
+        });
+
+        // 2. SWIPE DRETA dins del Registre -> Torna a l'Inici
+        const mcHist = new Hammer(historyModal);
+        mcHist.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
+        
+        mcHist.on("swiperight", () => {
+            if (!historyModal.classList.contains('hidden')) {
+                window.closeHistoryModal();
+                
+                // Neteja la classe de l'animació perquè pugui tornar a funcionar la pròxima vegada
+                setTimeout(() => {
+                    if (historyModalContent) historyModalContent.classList.remove('slide-in-right');
+                }, 300);
+            }
+        });
     }
 });
 </script>
