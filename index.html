@@ -179,30 +179,29 @@ body.light-mode [class*="divide-slate-"] {
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
 
 <!-- NOU SPLASH SCREEN AMB IMATGE I BARRA -->
-    <div id="custom-splash" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-500">
-        
-        <!-- La teva imatge -->
-        <img src="icon-512x512.png" alt="Logo de l'App" class="w-32 h-32 mb-8 rounded-2xl shadow-lg animate-pulse">
+<div id="custom-splash" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-500">
+    
+    <!-- La teva imatge (CANVIAT A icon-192.png) -->
+    <img src="icon-192.png" alt="Logo de l'App" class="w-32 h-32 mb-8 rounded-2xl shadow-lg animate-pulse">
 
-        <!-- Contenidor de la barra de càrrega -->
-        <div class="w-48 h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner">
-            <div id="loading-bar" class="h-full bg-blue-500 w-1/4 transition-all duration-300 ease-out"></div>
-        </div>
-        
-        <!-- Text -->
-        <p id="loading-text" class="text-slate-400 text-sm mt-4 font-medium tracking-wide">Sincronitzant amb el núvol...</p>
-        
+    <!-- Contenidor de la barra de càrrega -->
+    <div class="w-48 h-2 bg-slate-800 rounded-full overflow-hidden shadow-inner">
+        <div id="loading-bar" class="h-full bg-blue-500 w-1/4 transition-all duration-300 ease-out"></div>
     </div>
+    
+    <!-- Text -->
+    <p id="loading-text" class="text-slate-400 text-sm mt-4 font-medium tracking-wide">Sincronitzant amb el núvol...</p>
+    
+</div>
 
-    <!-- Content Wrapper (LA TEVA APP CONTINUA AQUÍ, NO HO TOQUIS) -->
-    <div id="app" class="flex-1 flex flex-col max-w-md mx-auto w-full min-h-[100dvh] pb-28 shadow-2xl bg-slate-900 border-x border-slate-800">
-        
-        <!-- Banner Offline (Només es mostra si no hi ha núvol) -->
-        <div id="offlineBanner" class="hidden bg-rose-600 text-white text-[10px] sm:text-xs text-center py-1 font-bold shadow-md z-30 flex items-center justify-center space-x-2">
-            <i class="fa-solid fa-cloud-arrow-down"></i>
-            <span>Mode Local: Configura Firebase per sincronitzar</span>
-        </div>
-
+<!-- Content Wrapper (LA TEVA APP CONTINUA AQUÍ, NO HO TOQUIS) -->
+<div id="app" class="flex-1 flex flex-col max-w-md mx-auto w-full min-h-[100dvh] pb-28 shadow-2xl bg-slate-900 border-x border-slate-800">
+    
+    <!-- Banner Offline (Només es mostra si no hi ha núvol) -->
+    <div id="offlineBanner" class="hidden bg-rose-600 text-white text-[10px] sm:text-xs text-center py-1 font-bold shadow-md z-30 flex items-center justify-center space-x-2">
+        <i class="fa-solid fa-cloud-arrow-down"></i>
+        <span>Mode Local: Configura Firebase per sincronitzar</span>
+    </div>
         <!-- Capçalera principal -->
         <header class="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
             <div class="flex items-center space-x-3">
