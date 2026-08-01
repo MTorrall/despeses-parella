@@ -167,6 +167,13 @@ body.light-mode [class*="divide-slate-"] {
             color: #0f172a !important;
         }
     </style>
+    <!-- Script bloquejant per evitar el parpelleig (FOUC) del tema clar -->
+    <script>
+        if (localStorage.getItem('despeses_theme') === 'light') {
+            document.documentElement.classList.add('light-mode');
+        }
+    </script>
+</head>
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
 
@@ -1985,11 +1992,9 @@ window.toggleTheme = function() {
             document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
             document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
             
-            // Comprovem si l'usuari ja tenia el mode clar actiu
+// Comprovem si l'usuari ja tenia el mode clar actiu per actualitzar la icona del menú
 if (localStorage.getItem('despeses_theme') === 'light') {
-    document.body.classList.add('light-mode');
-    document.documentElement.classList.add('light-mode'); // Apliquem també a l'HTML en carregar
-    
+    // Nota: El canvi de color base ja s'ha fet a l'<head> per evitar el parpelleig
     setTimeout(() => {
         const mainIcon = document.getElementById('mainThemeIcon');
         if(mainIcon) {
@@ -1997,7 +2002,6 @@ if (localStorage.getItem('despeses_theme') === 'light') {
         }
     }, 50);
 }
-            
             initApp();
         });
 document.addEventListener('DOMContentLoaded', () => {
