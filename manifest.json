@@ -1,6 +1,6 @@
 {
-  "name": "Control de Despeses",
-  "short_name": "Despeses",
+"name": "Paradís fiscal",
+  "short_name": "Paradís fiscal",
   "description": "App per gestionar les despeses en parella",
   "start_url": "./index.html",
   "display": "standalone",
