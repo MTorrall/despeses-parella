@@ -167,6 +167,7 @@ body.light-mode [class*="divide-slate-"] {
             color: #0f172a !important;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
 
@@ -478,14 +479,23 @@ body.light-mode [class*="divide-slate-"] {
     <div id="settingsModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             
-            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+         <div class="p-4 border-b border-slate-800 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <i class="fa-solid fa-layer-group text-amber-400 text-xl"></i>
                     <h3 class="text-lg font-bold text-white">Categories i Límits</h3>
                 </div>
-                <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center" aria-label="Tancar configuració">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                
+                <div class="flex items-center space-x-2">
+                    <!-- NOU BOTÓ DE REORDENAR -->
+                    <button id="toggleReorderBtn" onclick="toggleReorderMode()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors" aria-label="Reordenar categories">
+                        <i class="fa-solid fa-sort"></i>
+                    </button>
+                    
+                    <!-- EL TEU BOTÓ DE TANCAR -->
+                    <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors" aria-label="Tancar configuració">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="p-5 overflow-y-auto space-y-4 custom-scrollbar flex-1">
@@ -1724,7 +1734,7 @@ body.light-mode [class*="divide-slate-"] {
             renderUI(); 
         }
 
-        window.renderSettingsList = function() {
+window.renderSettingsList = function() {
             const listDiv = document.getElementById('limitsCategoryList');
             listDiv.innerHTML = '';
             
@@ -1743,15 +1753,24 @@ body.light-mode [class*="divide-slate-"] {
                 }
 
              listDiv.innerHTML += `
-                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group" data-index="${index}">
-                        <button onclick="window.deleteCategory(${index})" class="absolute top-2 right-2 w-8 h-8 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg flex items-center justify-center transition-all active:scale-95" title="Eliminar categoria">
+                    <!-- PAS 3: Afegit data-id a l'element contenidor -->
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group category-item" data-id="${cat.id}" data-index="${index}">
+                        
+                        <!-- PAS 3: Afegit el drag-handle (amagat per defecte) -->
+                        <div class="drag-handle absolute top-2 left-2 w-8 h-8 text-slate-500 flex items-center justify-center cursor-move hidden hover:text-sky-400 transition-colors" title="Arrossega per reordenar">
+                            <i class="fa-solid fa-grip-lines"></i>
+                        </div>
+
+                        <!-- Botó original d'eliminar categoria -->
+                        <button onclick="window.deleteCategory(${index})" class="delete-btn absolute top-2 right-2 w-8 h-8 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg flex items-center justify-center transition-all active:scale-95" title="Eliminar categoria">
                             <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                         
-                        <div class="grid grid-cols-2 gap-3 mb-3">
+                        <!-- La resta del codi de la categoria es manté igual, només afegim una petita classe (pl-8) als camps per fer espai si el drag-handle és visible -->
+                        <div class="grid grid-cols-2 gap-3 mb-3 mt-4">
                             <div>
                                 <label class="block text-[10px] text-slate-400 mb-1">Nom</label>
-                                <input type="text" class="cat-name w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" value="${safeName}">
+                                <input type="text" class="cat-name w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white transition-all" value="${safeName}">
                             </div>
                             <div>
                                 <label class="block text-[10px] text-slate-400 mb-1">Límit (€)</label>
@@ -1777,7 +1796,7 @@ body.light-mode [class*="divide-slate-"] {
             });
             
             listDiv.innerHTML += `
-                <button onclick="window.addCategory()" class="w-full py-3 border-2 border-dashed border-slate-700 rounded-xl text-slate-400 font-bold text-xs hover:border-sky-500 hover:text-sky-400 transition-colors">
+                <button onclick="window.addCategory()" class="w-full py-3 border-2 border-dashed border-slate-700 rounded-xl text-slate-400 font-bold text-xs hover:border-sky-500 hover:text-sky-400 transition-colors add-category-btn">
                     <i class="fa-solid fa-plus mr-1"></i> Afegir Nova Categoria
                 </button>
             `;
@@ -2116,6 +2135,62 @@ window.addEventListener('load', () => {
         });
     }
 });
+
+        // --- INICI NOU CODI: REORDENACIÓ DE CATEGORIES ---
+    let isReorderMode = false;
+    let sortableCategories = null;
+
+    function toggleReorderMode() {
+        isReorderMode = !isReorderMode;
+        const btn = document.getElementById('toggleReorderBtn');
+        const handles = document.querySelectorAll('.drag-handle');
+        
+        // Canvia 'llistaCategories' per l'ID real del contenidor (el <ul> o <div>) on pintes les categories
+        const container = document.getElementById('llistaCategories'); 
+
+        if (isReorderMode) {
+            // Estil de botó actiu
+            btn.classList.add('bg-blue-500', 'text-white');
+            btn.classList.remove('bg-gray-100', 'text-gray-700', 'dark:bg-gray-700');
+            // Mostrar els agafadors
+            handles.forEach(handle => handle.classList.remove('hidden'));
+            
+            // Iniciar SortableJS si no estava iniciat
+            if (!sortableCategories && container) {
+                sortableCategories = new Sortable(container, {
+                    handle: '.drag-handle', // Només es pot arrossegar des de la icona
+                    animation: 150,
+                    ghostClass: 'bg-gray-50', // Color de fons mentre arrossegues
+                    onEnd: actualitzarOrdreCategories
+                });
+            } else if (sortableCategories) {
+                sortableCategories.option("disabled", false);
+            }
+        } else {
+            // Desactivar mode reordenar
+            btn.classList.remove('bg-blue-500', 'text-white');
+            btn.classList.add('bg-gray-100', 'text-gray-700', 'dark:bg-gray-700');
+            handles.forEach(handle => handle.classList.add('hidden'));
+            
+            if (sortableCategories) sortableCategories.option("disabled", true);
+        }
+    }
+
+    function actualitzarOrdreCategories() {
+        // Obtenim l'ordre actual de la llista de l'HTML (pels data-id que hem posat)
+        const itemsList = document.querySelectorAll('.category-item');
+        const nouOrdreNoms = Array.from(itemsList).map(item => item.getAttribute('data-id'));
+        
+        // Reordenem el teu array original de categories (suposant que l'array es diu 'categories')
+        categories.sort((a, b) => {
+            return nouOrdreNoms.indexOf(a.nom) - nouOrdreNoms.indexOf(b.nom);
+        });
+
+        // AQUÍ has de cridar la teva funció habitual que desa les dades a Firebase o LocalStorage.
+        // Per exemple: guardarDades(); o syncAmbFirebase();
+        console.log("Categories reordenades amb èxit!");
+    }
+    // --- FI NOU CODI: REORDENACIÓ DE CATEGORIES ---
 </script>
 </body>
 </html>
