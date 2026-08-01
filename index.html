@@ -258,12 +258,12 @@ body.light-mode [class*="divide-slate-"] {
                 <!-- Desglossament per pagador -->
                 <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/50 text-center">
                     <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-                        <span id="labelPerson1" class="text-[10px] text-slate-400 block font-medium truncate">Marçal</span>
+                        <span id="labelPerson1" class="text-[10px] text-slate-400 block font-medium truncate">Montse</span>
                         <span id="totalMarcal" class="text-xs font-bold text-sky-400">0 €</span>
                     </div>
                     <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-                        <span id="labelPerson2" class="text-[10px] text-slate-400 block font-medium truncate">Laura</span>
-                        <span id="totalLaura" class="text-xs font-bold text-pink-400">0 €</span>
+                        <span id="labelPerson2" class="text-[10px] text-slate-400 block font-medium truncate">Meritxell</span>
+                        <span id="totalMeritxell" class="text-xs font-bold text-pink-400">0 €</span>
                     </div>
                     <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
                         <span class="text-[10px] text-slate-400 block font-medium">Compartit</span>
@@ -387,8 +387,8 @@ body.light-mode [class*="divide-slate-"] {
                             <label class="block text-xs text-slate-400 mb-1 font-medium">Pagat per</label>
                             <select id="expensePayer" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-medium text-white focus:outline-none focus:border-sky-500">
                                 <option value="shared">Compartit (50/50)</option>
-                                <option value="p1" id="optPayer1">Marçal</option>
-                                <option value="p2" id="optPayer2">Laura</option>
+                                <option value="p1" id="optPayer1">Montse</option>
+                                <option value="p2" id="optPayer2">Meritxell</option>
                             </select>
                         </div>
                         <div>
@@ -458,8 +458,8 @@ body.light-mode [class*="divide-slate-"] {
                     <select id="searchHistoryPayer" onchange="window.renderHistoryList()" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500">
                         <option value="">Tots els pagadors</option>
                         <option value="shared">Compartit (50/50)</option>
-                        <option value="p1" id="optSearchPayer1">Marçal</option>
-                        <option value="p2" id="optSearchPayer2">Laura</option>
+                        <option value="p1" id="optSearchPayer1">Montse</option>
+                        <option value="p2" id="optSearchPayer2">Meritxell</option>
                     </select>
                     <div class="relative flex-1">
                         <input type="date" id="searchHistoryDate" onchange="window.renderHistoryList()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-sky-500">
@@ -556,11 +556,11 @@ body.light-mode [class*="divide-slate-"] {
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">Nom Persona 1</label>
-                            <input type="text" id="inputSettingsPerson1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Ex: Marçal">
+                            <input type="text" id="inputSettingsPerson1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Ex: Montse">
                         </div>
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">Nom Persona 2</label>
-                            <input type="text" id="inputSettingsPerson2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Ex: Laura">
+                            <input type="text" id="inputSettingsPerson2" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white" placeholder="Ex: Meritxell">
                         </div>
                     </div>
                 </div>
@@ -714,8 +714,8 @@ body.light-mode [class*="divide-slate-"] {
             { id: 'menjar', name: 'Menjar', icon: 'fa-utensils', color: 'emerald', limit: 400 },
             { id: 'oci', name: 'Oci', icon: 'fa-martini-glass-citrus', color: 'purple', limit: 200 },
             { id: 'casa', name: 'Casa', icon: 'fa-house-chimney', color: 'amber', limit: 500 },
-            { id: 'oci_marcal', name: 'Oci Marçal', icon: 'fa-gamepad', color: 'sky', limit: 150 },
-            { id: 'oci_laura', name: 'Oci Laura', icon: 'fa-heart', color: 'pink', limit: 150 }
+            { id: 'oci_marcal', name: 'Oci Montse', icon: 'fa-gamepad', color: 'sky', limit: 150 },
+            { id: 'oci_Meritxell', name: 'Oci Meritxell', icon: 'fa-heart', color: 'pink', limit: 150 }
         ];
 
         // Llista d'icones disponibles per al selector de l'usuari
@@ -770,8 +770,8 @@ body.light-mode [class*="divide-slate-"] {
         // App State
         let categories = [...DEFAULT_CATEGORIES];
         let expenses = [];
-        let person1Name = 'Marçal';
-        let person2Name = 'Laura';
+        let person1Name = 'Montse';
+        let person2Name = 'Meritxell';
         let activeDate = new Date(); 
         let activeCategory = null;
         let coupleId = null;
@@ -1029,13 +1029,13 @@ function checkHideLoader() {
                         const data = docSnap.data();
                         categories = data.list || [...DEFAULT_CATEGORIES];
                         if (data.users) {
-                            person1Name = data.users.p1 || 'Marçal';
-                            person2Name = data.users.p2 || 'Laura';
+                            person1Name = data.users.p1 || 'Montse';
+                            person2Name = data.users.p2 || 'Meritxell';
                         }
                     } else {
                         setDoc(docRef, { 
                             list: DEFAULT_CATEGORIES,
-                            users: { p1: 'Marçal', p2: 'Laura' }
+                            users: { p1: 'Montse', p2: 'Meritxell' }
                         });
                     }
                     
@@ -1053,8 +1053,8 @@ function checkHideLoader() {
                         const data = JSON.parse(savedSettings);
                         categories = data.list || [...DEFAULT_CATEGORIES];
                         if (data.users) {
-                            person1Name = data.users.p1 || 'Marçal';
-                            person2Name = data.users.p2 || 'Laura';
+                            person1Name = data.users.p1 || 'Montse';
+                            person2Name = data.users.p2 || 'Meritxell';
                         }
                     } catch(e) { console.error(e); }
                 }
@@ -1152,8 +1152,8 @@ function checkHideLoader() {
         // --- Helpers de Payer per retrocompatibilitat ---
         function getNormalizedPayer(payer) {
             if (!payer) return 'shared';
-            if (payer === 'Marçal' || payer === 'p1') return 'p1';
-            if (payer === 'Laura' || payer === 'p2') return 'p2';
+            if (payer === 'Montse' || payer === 'p1') return 'p1';
+            if (payer === 'Meritxell' || payer === 'p2') return 'p2';
             if (payer === 'Compartit' || payer === 'shared') return 'shared';
             return payer;
         }
@@ -1176,7 +1176,7 @@ function checkHideLoader() {
             let totalAmount = 0;
             let totalLimit = 0;
             let totalMarcal = 0;
-            let totalLaura = 0;
+            let totalMeritxell = 0;
             let totalCompartit = 0;
 
             categories.forEach(cat => {
@@ -1189,7 +1189,7 @@ function checkHideLoader() {
                 
                 const normPayer = getNormalizedPayer(exp.payer);
                 if(normPayer === 'p1') totalMarcal += amt;
-                else if(normPayer === 'p2') totalLaura += amt;
+                else if(normPayer === 'p2') totalMeritxell += amt;
                 else if(normPayer === 'shared') totalCompartit += amt;
             });
 
@@ -1197,7 +1197,7 @@ function checkHideLoader() {
             document.getElementById('globalTotalLimit').innerText = totalLimit > 0 ? totalLimit.toFixed(0) + ' €' : 'No def.';
             
             document.getElementById('totalMarcal').innerText = totalMarcal.toFixed(0) + ' €';
-            document.getElementById('totalLaura').innerText = totalLaura.toFixed(0) + ' €';
+            document.getElementById('totalMeritxell').innerText = totalMeritxell.toFixed(0) + ' €';
             document.getElementById('totalCompartit').innerText = totalCompartit.toFixed(0) + ' €';
 
             let globalPercent = 0;
@@ -1632,29 +1632,29 @@ function checkHideLoader() {
         };
     });
 
-    // 2. Línies poligonals per Pagador (Marçal, Laura, Compartit)
+    // 2. Línies poligonals per Pagador (Montse, Meritxell, Compartit)
     const getPayerStr = (e) => (e.paidBy || e.payer || e.who || e.user || e.person || '').toString().toLowerCase();
-    const isMarcal = (e) => getPayerStr(e).includes('marçal') || getPayerStr(e).includes('marcal') || getPayerStr(e) === 'p1' || getPayerStr(e) === 'persona 1';
-    const isLaura = (e) => getPayerStr(e).includes('laura') || getPayerStr(e) === 'p2' || getPayerStr(e) === 'persona 2';
+    const isMarcal = (e) => getPayerStr(e).includes('Montse') || getPayerStr(e).includes('marcal') || getPayerStr(e) === 'p1' || getPayerStr(e) === 'persona 1';
+    const isMeritxell = (e) => getPayerStr(e).includes('Meritxell') || getPayerStr(e) === 'p2' || getPayerStr(e) === 'persona 2';
 
     const marcalData = monthsArray.map(mKey => 
         allHistoricalExpenses.filter(e => e.monthKey === mKey && isMarcal(e))
                              .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
     );
 
-    const lauraData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && isLaura(e))
+    const MeritxellData = monthsArray.map(mKey => 
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && isMeritxell(e))
                              .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
     );
 
     const compartitData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && !isMarcal(e) && !isLaura(e))
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && !isMarcal(e) && !isMeritxell(e))
                              .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
     );
 
     const payerDatasets = [
         {
-            label: '👤 Marçal',
+            label: '👤 Montse',
             data: marcalData,
             borderColor: '#3b82f6', // Blau
             backgroundColor: '#3b82f6',
@@ -1666,8 +1666,8 @@ function checkHideLoader() {
             pointBackgroundColor: '#3b82f6'
         },
         {
-            label: '👤 Laura',
-            data: lauraData,
+            label: '👤 Meritxell',
+            data: MeritxellData,
             borderColor: '#ec4899', // Rosa
             backgroundColor: '#ec4899',
             tension: 0.4,
