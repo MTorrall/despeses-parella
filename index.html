@@ -167,7 +167,7 @@ body.light-mode [class*="divide-slate-"] {
             color: #0f172a !important;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+   
 </head>
 <body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-x-hidden selection:bg-sky-500 selection:text-white relative">
 
@@ -486,10 +486,7 @@ body.light-mode [class*="divide-slate-"] {
                 </div>
                 
                 <div class="flex items-center space-x-2">
-                    <!-- NOU BOTÓ DE REORDENAR -->
-                    <button id="toggleReorderBtn" onclick="toggleReorderMode()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors" aria-label="Reordenar categories">
-                        <i class="fa-solid fa-sort"></i>
-                    </button>
+                  
                     
                     <!-- EL TEU BOTÓ DE TANCAR -->
                     <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors" aria-label="Tancar configuració">
@@ -1741,32 +1738,30 @@ window.renderSettingsList = function() {
             categories.forEach((cat, index) => {
                 const safeName = escapeHtml(cat.name);
                 
-                // Generar les opcions del select de forma dinàmica
                 let iconOptionsHtml = AVAILABLE_ICONS.map(iconObj => {
                     const isSelected = cat.icon === iconObj.value ? 'selected' : '';
                     return `<option value="${iconObj.value}" ${isSelected}>${iconObj.label}</option>`;
                 }).join('');
                 
-                // Si la categoria té una icona guardada que no està a la nostra llista (compatibilitat cap enrere)
                 if (!AVAILABLE_ICONS.some(i => i.value === cat.icon)) {
                     iconOptionsHtml += `<option value="${cat.icon}" selected>Icona actual (${cat.icon})</option>`;
                 }
 
-             listDiv.innerHTML += `
-                    <!-- PAS 3: Afegit data-id a l'element contenidor -->
-                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group category-item" data-id="${cat.id}" data-index="${index}">
+                listDiv.innerHTML += `
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 relative group category-item" data-index="${index}">
                         
-                        <!-- PAS 3: Afegit el drag-handle (amagat per defecte) -->
-                        <div class="drag-handle absolute top-2 left-2 w-8 h-8 text-slate-500 flex items-center justify-center cursor-move hidden hover:text-sky-400 transition-colors" title="Arrossega per reordenar">
-                            <i class="fa-solid fa-grip-lines"></i>
+                        <!-- NOUS BOTONS DE FLETXES PER REORDENAR -->
+                        <div class="absolute top-2 left-2 flex space-x-1">
+                            ${index > 0 ? `<button onclick="window.moveCategory(${index}, -1)" class="w-8 h-8 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg flex items-center justify-center transition-all active:scale-95" title="Pujar categoria"><i class="fa-solid fa-arrow-up text-xs"></i></button>` : ''}
+                            ${index < categories.length - 1 ? `<button onclick="window.moveCategory(${index}, 1)" class="w-8 h-8 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg flex items-center justify-center transition-all active:scale-95" title="Baixar categoria"><i class="fa-solid fa-arrow-down text-xs"></i></button>` : ''}
                         </div>
 
-                        <!-- Botó original d'eliminar categoria -->
+                        <!-- Botó d'eliminar categoria -->
                         <button onclick="window.deleteCategory(${index})" class="delete-btn absolute top-2 right-2 w-8 h-8 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg flex items-center justify-center transition-all active:scale-95" title="Eliminar categoria">
                             <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                         
-                        <!-- La resta del codi de la categoria es manté igual, només afegim una petita classe (pl-8) als camps per fer espai si el drag-handle és visible -->
+                        <!-- Camps del formulari -->
                         <div class="grid grid-cols-2 gap-3 mb-3 mt-4">
                             <div>
                                 <label class="block text-[10px] text-slate-400 mb-1">Nom</label>
@@ -1801,6 +1796,32 @@ window.renderSettingsList = function() {
                 </button>
             `;
         }
+        window.moveCategory = function(index, direction) {
+            const listDiv = document.getElementById('limitsCategoryList');
+            const items = listDiv.querySelectorAll('.category-item');
+            
+            // 1. Guardem temporalment el que l'usuari hagi escrit als inputs abans de redibuixar
+            items.forEach((item, i) => {
+                categories[i].name = item.querySelector('.cat-name').value;
+                const limitVal = item.querySelector('.cat-limit').value;
+                categories[i].limit = limitVal ? parseFloat(limitVal) : null;
+                categories[i].color = item.querySelector('.cat-color').value;
+                categories[i].icon = item.querySelector('.cat-icon').value;
+            });
+
+            // 2. Calculem la nova posició
+            const newIndex = index + direction;
+            
+            // 3. Si la nova posició és vàlida, permutem les categories
+            if (newIndex >= 0 && newIndex < categories.length) {
+                const temp = categories[index];
+                categories[index] = categories[newIndex];
+                categories[newIndex] = temp;
+                
+                // 4. Redibuixem la llista amb el nou ordre
+                window.renderSettingsList();
+            }
+        };
 
         window.addCategory = function() {
             categories.push({
