@@ -1302,15 +1302,34 @@ window.joinCoupleSpace = async function(code) {
                 modal.children[0].classList.add('translate-y-0');
             }, 10);
         }
+window.closeCategoryModal = function() {
+    const modal = document.getElementById('categoryModal');
+    modal.children[0].classList.remove('translate-y-0');
+    
+    // --- NOU: NETEJA DEL MODE EDICIÓ ---
+    // 1. Resetejem la variable d'edició (sortim del mode actualitzar)
+    if (typeof idDespesaEnEdicio !== 'undefined') {
+        idDespesaEnEdicio = null;
+    }
+    
+    // 2. Buidem tots els camps del formulari
+    const form = document.getElementById('quickExpenseForm');
+    if (form) {
+        form.reset();
+    }
+    
+    // 3. Restaurem el botó al seu estat original d'Afegir
+    const btnFormulari = document.querySelector('#quickExpenseForm button[type="submit"]');
+    if (btnFormulari) {
+        btnFormulari.innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i><span>Afegir Despesa</span>';
+    }
+    // -----------------------------------
 
-        window.closeCategoryModal = function() {
-            const modal = document.getElementById('categoryModal');
-            modal.children[0].classList.remove('translate-y-0');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                activeCategory = null;
-            }, 200);
-        }
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        activeCategory = null;
+    }, 200);
+}
 
         function updateCategoryModalData() {
             if (!activeCategory) return;
