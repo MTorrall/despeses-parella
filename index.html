@@ -1494,7 +1494,7 @@ window.handleExpenseSubmit = async function(e) {
 window.editarDespesa = function(id) {
             // ATENCIÓ: Si el teu array de despeses no es diu 'currentExpenses', 
             // canvia aquest nom pel nom real de l'array on guardes la llista que es mostra.
-            const despesa = currentExpenses.find(d => d.id === id);
+           const despesa = expenses.find(d => d.id === id);
             
             if (despesa) {
                 // Omplim els inputs de l'HTML amb les dades reals que he vist al teu codi
