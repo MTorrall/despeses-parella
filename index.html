@@ -474,7 +474,11 @@ body.light-mode [class*="divide-slate-"] {
             </div>
         </div>
     </div>
-
+<!-- MODAL EDITAR DESPESA (EL TEU NOU CODI DEL PAS 1 ENGANXAT AQUÍ) -->
+    <div id="editExpenseModal" class="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden transform transition-all">
+            
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
 <!-- 3. MODAL CONFIGURACIÓ DE LÍMITS -->
     <div id="settingsModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
@@ -1299,20 +1303,22 @@ body.light-mode [class*="divide-slate-"] {
                                     normPayer === 'p2' ? '<i class="fa-solid fa-user text-pink-400"></i>' : 
                                     '<i class="fa-solid fa-users text-amber-400"></i>';
 
-                    listDiv.innerHTML += `
-                        <div class="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+listDiv.innerHTML += `
+                        <div onclick="window.openEditExpenseModal('${exp.id}')" class="flex items-center justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors active:bg-slate-800">
                             <div class="flex items-center space-x-3">
-                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">
-                                    ${payerIcon}
+                                <div class="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                                    ${iconHTML}
                                 </div>
                                 <div>
                                     <div class="text-sm font-bold text-slate-200">${safeConcept}</div>
-                                    <div class="text-[10px] text-slate-400">${formatDateReadable(exp.date)} · ${displayName}</div>
+                                    <div class="text-[10px] text-slate-400 flex items-center space-x-1">
+                                        <span>${payerIcon}</span> <span>${displayName}</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-3">
                                 <span class="font-bold text-white">${parseFloat(exp.amount).toFixed(2)} €</span>
-                                <button onclick="window.deleteExpense('${exp.id}')" class="text-slate-500 hover:text-rose-400 transition-colors" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                                <button onclick="event.stopPropagation(); window.deleteExpense('${exp.id}')" class="text-slate-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
                         </div>
                     `;
@@ -1418,6 +1424,63 @@ body.light-mode [class*="divide-slate-"] {
         window.closeHistoryModal = function() {
             document.getElementById('historyModal').classList.add('hidden');
         }
+
+        // ==========================================
+        // EDICIÓ DE DESPESES
+        // ==========================================
+
+        // 1. OBRIR MODAL D'EDICIÓ I CARREGAR DADES
+        window.openEditExpenseModal = function(id) {
+            // Busquem la despesa
+            const exp = expenses.find(e => e.id === id);
+            if (!exp) return;
+
+            // Omplim el desplegable de categories
+            const catSelect = document.getElementById('editExpCategory');
+            catSelect.innerHTML = categories.map(cat => 
+                `<option value="${cat.id}">${cat.name}</option>`
+            ).join('');
+
+            // Actualitzem els noms dels pagadors
+            document.getElementById('editOptPayer1').innerText = person1Name || 'Persona 1';
+            document.getElementById('editOptPayer2').innerText = person2Name || 'Persona 2';
+
+            // Bolquem les dades al formulari
+            document.getElementById('editExpId').value = exp.id;
+            document.getElementById('editExpAmount').value = parseFloat(exp.amount).toFixed(2);
+            document.getElementById('editExpConcept').value = exp.concept || ''; 
+            document.getElementById('editExpCategory').value = exp.categoryId;
+            document.getElementById('editExpPayer').value = getNormalizedPayer(exp.payer);
+
+            // Mostrem el modal
+            document.getElementById('editExpenseModal').classList.remove('hidden');
+        };
+
+        // 2. TANCAR MODAL D'EDICIÓ
+        window.closeEditExpenseModal = function() {
+            document.getElementById('editExpenseModal').classList.add('hidden');
+        };
+
+        // 3. GUARDAR CANVIS
+        window.saveEditedExpense = function(e) {
+            e.preventDefault(); // Evitem que el formulari recarregui la pàgina
+
+            const id = document.getElementById('editExpId').value;
+            const expenseIndex = expenses.findIndex(exp => exp.id === id);
+            
+            if (expenseIndex > -1) {
+                // Actualitzem l'objecte amb els nous valors
+                expenses[expenseIndex].amount = parseFloat(document.getElementById('editExpAmount').value);
+                expenses[expenseIndex].concept = document.getElementById('editExpConcept').value;
+                expenses[expenseIndex].categoryId = document.getElementById('editExpCategory').value;
+                expenses[expenseIndex].payer = document.getElementById('editExpPayer').value;
+
+                // Guardem, tanquem i actualitzem la UI
+                saveData(); 
+                window.closeEditExpenseModal();
+                renderUI(); 
+            }
+        };
 
         window.showHistoryTab = function(tabName) {
             const listBtn = document.getElementById('tabListBtn');
