@@ -890,7 +890,7 @@ function checkHideLoader() {
 
 
 
-        window.joinCoupleSpace = async function(code) {
+window.joinCoupleSpace = async function(code) {
             coupleId = code.toUpperCase();
             
             if (db && currentUser) {
@@ -902,20 +902,41 @@ function checkHideLoader() {
             
             document.getElementById('coupleLoginModal').classList.add('hidden');
             document.getElementById('shareCodeModal').classList.add('hidden');
-            // document.getElementById('displayCoupleCode').innerText = coupleId;
             document.getElementById('displayPairCode').innerText = coupleId;
             
             isSettingsLoaded = false;
             isExpensesLoaded = false;
-            const loader = document.getElementById('initialLoader');
-            loader.classList.remove('hidden');
-            setTimeout(() => loader.classList.remove('opacity-0'), 10);
+            
+            // --- CORRECCIÓ: Cridar el NOU Splash Screen i reiniciar la barra ---
+            const splash = document.getElementById('custom-splash');
+            if (splash) {
+                splash.style.display = 'flex'; // Tornem a mostrar el fons
+                
+                const bar = document.getElementById('loading-bar');
+                const text = document.getElementById('loading-text');
+                
+                // Reiniciem la barra al 10%
+                if (bar) {
+                    bar.style.transitionDuration = '0s'; // Sense transició pel reset
+                    bar.style.width = '10%';
+                    // Tornem a activar la transició suau després d'un instant
+                    setTimeout(() => { bar.style.transitionDuration = '0.3s'; }, 20);
+                }
+                
+                if (text) text.innerText = 'Sincronitzant amb el núvol...';
+                
+                // Fem l'efecte de fosa d'entrada (fade-in)
+                setTimeout(() => {
+                    splash.style.opacity = '1';
+                }, 10);
+            }
             
             // Temporitzador de seguretat per la càrrega manual
             setTimeout(() => {
                 hideLoaderForce();
             }, 4000);
             
+            // Ara aquesta línia sí que s'executarà i carregarà les dades de Firebase!
             initializeSharedCollections(coupleId);
             showCustomModal("Vinculació correcta", `Ara estàs connectat a l'espai de despeses: ${coupleId}.`, null, true);
         }
