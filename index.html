@@ -1426,7 +1426,7 @@ window.handleExpenseSubmit = async function(e) {
                     if (idDespesaEnEdicio) {
                         // MODE EDICIÓ: Actualitzem el document que ja existeix
                         const docRef = doc(EXPENSES_COLLECTION, idDespesaEnEdicio);
-                        await updateDoc(docRef, dadesDespesa);
+                        await setDoc(docRef, dadesDespesa);
                     } else {
                         // MODE CREACIÓ: Creem un document nou des de zero
                         const newDocRef = doc(EXPENSES_COLLECTION);
@@ -1492,36 +1492,35 @@ window.handleExpenseSubmit = async function(e) {
         }
 
 window.editarDespesa = function(id) {
-            // ATENCIÓ: Si el teu array de despeses no es diu 'currentExpenses', 
-            // canvia aquest nom pel nom real de l'array on guardes la llista que es mostra.
-           const despesa = expenses.find(d => d.id === id);
-            
-            if (despesa) {
-                // Omplim els inputs de l'HTML amb les dades reals que he vist al teu codi
-                document.getElementById('expenseConcept').value = despesa.concept;
-                document.getElementById('expenseAmount').value = despesa.amount;
-                document.getElementById('expenseDate').value = despesa.date;
-                document.getElementById('expensePayer').value = despesa.payer;
+    const despesa = expenses.find(d => d.id === id);
+    
+    if (despesa) {
+        // 1. Tanquem el modal d'historial (ja no el necessitem)
+        window.closeHistoryModal();
 
-                // Seleccionar la categoria automàticament (fa el clic visual per marcar-la com activa)
-                const categoriaElement = document.getElementById('cat-' + despesa.categoryId);
-                if (categoriaElement) {
-                    categoriaElement.click(); 
-                }
+        // 2. Obrim directament el modal de la categoria correcta
+        window.openCategoryModal(despesa.categoryId);
 
-                // Marquem que estem editant
-                idDespesaEnEdicio = id;
+        // 3. Posem un petit retard (setTimeout) per omplir els camps.
+        // Això és necessari perquè 'openCategoryModal' per defecte posa 
+        // la data d'avui. Així ens assegurem de sobreescriure-ho amb la data real.
+        setTimeout(() => {
+            document.getElementById('expenseConcept').value = despesa.concept;
+            document.getElementById('expenseAmount').value = despesa.amount;
+            document.getElementById('expenseDate').value = despesa.date;
+            document.getElementById('expensePayer').value = despesa.payer;
 
-                // Canviem el text del botó per indicar que actualitzem (buscant l'span de dins)
-                const spanBoto = document.querySelector('button[type="submit"] span');
-                if (spanBoto) {
-                    spanBoto.innerText = "Actualitzar Despesa";
-                }
+            // Marquem que estem editant internament
+            idDespesaEnEdicio = id;
 
-                // Fer scroll amunt cap al formulari
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Canviem el text i la icona del botó per indicar que actualitzem
+            const btnFormulari = document.querySelector('#quickExpenseForm button[type="submit"]');
+            if (btnFormulari) {
+                btnFormulari.innerHTML = '<i class="fa-solid fa-pencil text-lg"></i><span>Actualitzar Despesa</span>';
             }
-        }
+        }, 50); // 50 mil·lisegons són suficients
+    }
+}
 
         window.openHistoryModal = function() {
             if(document.getElementById('searchHistoryText')) document.getElementById('searchHistoryText').value = '';
