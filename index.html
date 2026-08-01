@@ -779,13 +779,52 @@ body.light-mode [class*="divide-slate-"] {
         let isSettingsLoaded = false;
         let isExpensesLoaded = false;
 
-        function checkHideLoader() {
+function checkHideLoader() {
             if (isSettingsLoaded && isExpensesLoaded) {
+                // 1. Amaguem el loader antic (si encara el tens)
                 const loader = document.getElementById('initialLoader');
                 if (loader && !loader.classList.contains('hidden')) {
                     loader.classList.add('opacity-0');
                     setTimeout(() => loader.classList.add('hidden'), 500);
                 }
+
+                // 2. Animem i amaguem el NOU Splash Screen
+                acabarAnimacioSplash();
+            }
+        }
+
+        function hideLoaderForce() {
+            // Amaguem el loader antic
+            const loader = document.getElementById('initialLoader');
+            if (loader) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
+            // Forcem tancar el nou splash si passen 4 segons o falla internet
+            acabarAnimacioSplash();
+        }
+
+        // Aquesta és la funció nova que fa la màgia visual
+        function acabarAnimacioSplash() {
+            const splash = document.getElementById('custom-splash');
+            const bar = document.getElementById('loading-bar');
+            const text = document.getElementById('loading-text');
+
+            if (splash && splash.style.display !== 'none') {
+                // Omplim la barra ràpidament al 100%
+                if (bar) {
+                    bar.style.width = '100%';
+                    bar.style.transitionDuration = '0.4s'; 
+                }
+                if (text) text.innerText = 'App a punt!';
+
+                // Fem l'efecte de fosa per amagar la pantalla
+                setTimeout(() => {
+                    splash.style.opacity = '0';
+                    setTimeout(() => {
+                        splash.style.display = 'none';
+                    }, 500); // Esperem a que acabi de fer-se transparent per eliminar-la
+                }, 400); // Aquest temps quadra amb la barra omplint-se
             }
         }
 
@@ -843,13 +882,7 @@ body.light-mode [class*="divide-slate-"] {
             }
         }
 
-        function hideLoaderForce() {
-            const loader = document.getElementById('initialLoader');
-            if (loader) {
-                loader.classList.add('opacity-0');
-                setTimeout(() => loader.classList.add('hidden'), 500);
-            }
-        }
+
 
         window.joinCoupleSpace = async function(code) {
             coupleId = code.toUpperCase();
@@ -2105,17 +2138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <script>
 // Espera a que la pàgina carregui completament
 window.addEventListener('load', () => {
-    const loader = document.getElementById('initialLoader');
-    if (loader) {
-        // Activa l'animació de transició (es torna transparent)
-        loader.classList.add('opacity-0');
-        
-        // Espera 500ms i després l'amaga del tot
-        setTimeout(() => {
-            loader.classList.add('hidden');
-        }, 500);
-    }
-// --- LÒGICA SWIPE (Navegació tàctil Inici <-> Registre) ---
+    // --- LÒGICA SWIPE (Navegació tàctil Inici <-> Registre) ---
     if (typeof Hammer !== 'undefined') {
         // Inicialitzem Hammer al body per capturar els gestos globalment
         // 'pan-y' permet que l'scroll vertical de les teves llistes continuï funcionant amb normalitat
