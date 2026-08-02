@@ -378,7 +378,6 @@ body.light-mode [class*="divide-slate-"] {
                             <button type="button" onclick="window.addQuickAmount(10)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+10€</button>
                             <button type="button" onclick="window.addQuickAmount(50)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+50€</button>
                         </div>
-                    </div>
 
                     <!-- Concepte / Descripció -->
                     <div>
@@ -418,7 +417,6 @@ body.light-mode [class*="divide-slate-"] {
                         <i class="fa-solid fa-plus-circle text-lg"></i>
                         <span>Afegir Despesa</span>
                     </button>
-                </form>
                 </form>
 
                 <!-- Llista de despeses recents d'aquesta categoria -->
@@ -1511,88 +1509,96 @@ if (editCatDiv) {
         }
 
 window.handleExpenseSubmit = async function(e) {
-            e.preventDefault();
-            if(!activeCategory) return;
+    e.preventDefault();
 
-            const amount = parseFloat(document.getElementById('expenseAmount').value);
-            const concept = document.getElementById('expenseConcept').value;
-            const payer = document.getElementById('expensePayer').value;
-            const date = document.getElementById('expenseDate').value;
+    // 🟢 CANVI 1: Guardem si és una nova despesa A L'INICI de la funció
+    const esNovaDespesa = !idDespesaEnEdicio;
 
-            if(!amount || !concept || !date) return;
+    if(!activeCategory) return;
 
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-lg"></i>';
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const concept = document.getElementById('expenseConcept').value;
+    const payer = document.getElementById('expensePayer').value;
+    const date = document.getElementById('expenseDate').value;
 
-            try {
-                // 1. Preparem l'objecte amb les dades de l'HTML
-                const dadesDespesa = {
-                    categoryId: document.getElementById('expenseCategory').value || activeCategory.id,
-                    amount: amount,
-                    concept: concept,
-                    payer: payer,
-                    date: date,
-                    monthKey: date.substring(0, 7)
-                };
+    if(!amount || !concept || !date) return;
 
-                if (db) {
-                    // --- MODE NÚVOL (FIREBASE) ---
-                    if (idDespesaEnEdicio) {
-                        // MODE EDICIÓ: Actualitzem el document que ja existeix
-                        const docRef = doc(EXPENSES_COLLECTION, idDespesaEnEdicio);
-                        await setDoc(docRef, dadesDespesa);
-                    } else {
-                        // MODE CREACIÓ: Creem un document nou des de zero
-                        const newDocRef = doc(EXPENSES_COLLECTION);
-                        await setDoc(newDocRef, dadesDespesa);
-                    }
-                } else {
-                    // --- MODE LOCAL (SENSE CONNEXIÓ) ---
-                    const savedExp = localStorage.getItem('expenses_' + coupleId);
-                    let allExp = savedExp ? JSON.parse(savedExp) : [];
-                    
-                    if (idDespesaEnEdicio) {
-                        // MODE EDICIÓ LOCAL
-                        const index = allExp.findIndex(e => e.id === idDespesaEnEdicio);
-                        if (index !== -1) {
-                            dadesDespesa.id = idDespesaEnEdicio;
-                            allExp[index] = dadesDespesa;
-                        }
-                    } else {
-                        // MODE CREACIÓ LOCAL
-                        dadesDespesa.id = 'exp_' + Date.now() + Math.floor(Math.random()*1000);
-                        allExp.push(dadesDespesa);
-                    }
-                    
-                    localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
-                    syncMonthData(getCurrentMonthKey());
-                }
-                
-                // 2. Neteja: Tornem l'aplicació a l'estat normal
-                idDespesaEnEdicio = null; 
-                loadedHistoricalData = false;
-                triggerConfetti(false);
-                
-                document.getElementById('expenseAmount').value = '';
-                document.getElementById('expenseConcept').value = '';
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-lg"></i>';
 
-// >>> NOU CODI: AMAGUEM EL SELECTOR <<<
-                const editCatDiv = document.getElementById('editCategoryDiv');
-                if (editCatDiv) {
-                    editCatDiv.classList.add('hidden');
-                }
-                // >>> FINAL NOU CODI <<<
-                
-            } catch (err) {
-                console.error(err);
-                showCustomModal("Error", "No s'ha pogut guardar la despesa.", null, true);
-            } finally {
-                // 3. Tornem a posar el text original al botó
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i><span>Afegir Despesa</span>';
+    try {
+        // 1. Preparem l'objecte amb les dades de l'HTML
+        const dadesDespesa = {
+            categoryId: document.getElementById('expenseCategory').value || activeCategory.id,
+            amount: amount,
+            concept: concept,
+            payer: payer,
+            date: date,
+            monthKey: date.substring(0, 7)
+        };
+
+        if (db) {
+            // --- MODE NÚVOL (FIREBASE) ---
+            if (idDespesaEnEdicio) {
+                // MODE EDICIÓ: Actualitzem el document que ja existeix
+                const docRef = doc(EXPENSES_COLLECTION, idDespesaEnEdicio);
+                await setDoc(docRef, dadesDespesa);
+            } else {
+                // MODE CREACIÓ: Creem un document nou des de zero
+                const newDocRef = doc(EXPENSES_COLLECTION);
+                await setDoc(newDocRef, dadesDespesa);
             }
+        } else {
+            // --- MODE LOCAL (SENSE CONNEXIÓ) ---
+            const savedExp = localStorage.getItem('expenses_' + coupleId);
+            let allExp = savedExp ? JSON.parse(savedExp) : [];
+            
+            if (idDespesaEnEdicio) {
+                // MODE EDICIÓ LOCAL
+                const index = allExp.findIndex(e => e.id === idDespesaEnEdicio);
+                if (index !== -1) {
+                    dadesDespesa.id = idDespesaEnEdicio;
+                    allExp[index] = dadesDespesa;
+                }
+            } else {
+                // MODE CREACIÓ LOCAL
+                dadesDespesa.id = 'exp_' + Date.now() + Math.floor(Math.random()*1000);
+                allExp.push(dadesDespesa);
+            }
+            
+            localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
+            syncMonthData(getCurrentMonthKey());
         }
+        
+        // 🟢 CANVI 2: Disparem el confeti NOMÉS si era una nova despesa
+        if (esNovaDespesa) {
+            triggerConfetti(false);
+        }
+
+        // 2. Neteja: Tornem l'aplicació a l'estat normal
+        idDespesaEnEdicio = null; 
+        loadedHistoricalData = false;
+        
+        document.getElementById('expenseAmount').value = '';
+        document.getElementById('expenseConcept').value = '';
+
+        // >>> NOU CODI: AMAGUEM EL SELECTOR <<<
+        const editCatDiv = document.getElementById('editCategoryDiv');
+        if (editCatDiv) {
+            editCatDiv.classList.add('hidden');
+        }
+        // >>> FINAL NOU CODI <<<
+        
+    } catch (err) {
+        console.error(err);
+        showCustomModal("Error", "No s'ha pogut guardar la despesa.", null, true);
+    } finally {
+        // 3. Tornem a posar el text original al botó
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i><span>Afegir Despesa</span>';
+    }
+}
 
         window.deleteExpense = function(id) {
             showCustomModal("Eliminar Despesa", "Estàs segur que vols eliminar aquesta despesa? Aquesta acció no es pot desfer.", async () => {
