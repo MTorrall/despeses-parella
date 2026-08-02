@@ -222,6 +222,11 @@ body.light-mode [class*="divide-slate-"] {
             </div>
 
             <div class="flex items-center space-x-2">
+                <!-- >>> NOU BOTÓ: CANVI DE VISTA <<< -->
+                <button onclick="window.toggleLayoutMode()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-slate-700 active:scale-95 shadow-sm" aria-label="Canviar vista" title="Canviar format de les categories">
+                    <i id="layoutToggleIcon" class="fa-solid fa-list text-lg text-slate-300"></i>
+                </button>
+                <!-- >>> FINAL NOU BOTÓ <<< -->
               
                 <button onclick="window.toggleTheme()" id="mainThemeToggleBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-slate-700 active:scale-95 shadow-sm" aria-label="Canviar tema" title="Canviar tema">
     <i id="mainThemeIcon" class="fa-solid fa-moon text-lg text-sky-400"></i>
