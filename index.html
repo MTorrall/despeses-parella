@@ -2238,56 +2238,72 @@ window.renderSettingsList = function() {
 // LÒGICA DEL TEMA CLAR/FOSC (Versió Definitiva)
 // ==========================================
 window.toggleTheme = function() {
-    // ... el teu codi actual del tema clar/fosc ...
     const body = document.body;
-    const html = document.documentElement; // Seleccionem també l'HTML
+    const html = document.documentElement; 
     const mainIcon = document.getElementById('mainThemeIcon');
     
-    // Alternem la classe tant al body com a l'html
     body.classList.toggle('light-mode');
     html.classList.toggle('light-mode');
     
     const isLight = body.classList.contains('light-mode');
     
     if (isLight) {
-        if(mainIcon) {
-            mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
-        }
+        if(mainIcon) mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
         localStorage.setItem('despeses_theme', 'light');
     } else {
-        if(mainIcon) {
-            mainIcon.className = 'fa-solid fa-moon text-lg text-sky-400';
-        }
+        if(mainIcon) mainIcon.className = 'fa-solid fa-moon text-lg text-sky-400';
         localStorage.setItem('despeses_theme', 'dark');
     }
 };
 
+// ==========================================
+// LÒGICA DEL CANVI DE VISTA (Quadrat / Rectangular)
+// ==========================================
+// NOTA: La variable isCompactMode ja està declarada a dalt (App State), per tant aquí només l'utilitzem.
+window.toggleLayoutMode = function() {
+    isCompactMode = !isCompactMode;
+    localStorage.setItem('compactMode', isCompactMode);
+    
+    const icon = document.getElementById('layoutToggleIcon');
+    if (icon) {
+        icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
+    }
+    
+    // Tornem a dibuixar la pantalla principal per aplicar el canvi
+    if (typeof renderUI === 'function') {
+        renderUI(); 
+    }
+};
 
-        // ==========================================
-        // CÀRREGA INICIAL DE L'APLICACIÓ
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
-            document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
-            
-            // Comprovem si l'usuari ja tenia el mode clar actiu
-if (localStorage.getItem('despeses_theme') === 'light') {
-    document.body.classList.add('light-mode');
-    document.documentElement.classList.add('light-mode'); // Apliquem també a l'HTML en carregar
-    
-    setTimeout(() => {
-        const mainIcon = document.getElementById('mainThemeIcon');
-        if(mainIcon) {
-            mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
-        }
-    }, 50);
-}
-            
-            initApp();
-        });
+// ==========================================
+// CÀRREGA INICIAL DE L'APLICACIÓ (Tot unificat)
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    const btnCopiar = document.getElementById('btnCopiarCodi');
+    // 1. Botons de navegació de mesos
+    document.getElementById('prevMonthBtn').addEventListener('click', () => changeMonth(-1));
+    document.getElementById('nextMonthBtn').addEventListener('click', () => changeMonth(1));
     
+    // 2. Comprovem si l'usuari ja tenia el mode clar actiu
+    if (localStorage.getItem('despeses_theme') === 'light') {
+        document.body.classList.add('light-mode');
+        document.documentElement.classList.add('light-mode'); 
+        
+        setTimeout(() => {
+            const mainIcon = document.getElementById('mainThemeIcon');
+            if(mainIcon) {
+                mainIcon.className = 'fa-solid fa-sun text-lg text-amber-500';
+            }
+        }, 50);
+    }
+
+    // 3. Posem la icona correcta del mode compacte en carregar
+    const layoutIcon = document.getElementById('layoutToggleIcon');
+    if (layoutIcon) {
+        layoutIcon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
+    }
+    
+    // 4. Lògica del botó de copiar el codi de parella
+    const btnCopiar = document.getElementById('btnCopiarCodi');
     if (btnCopiar) {
         btnCopiar.addEventListener('click', () => {
             const elementCodi = document.getElementById('displayPairCode');
@@ -2295,25 +2311,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const codi = elementCodi.innerText;
             
-            // 1. Definim la funció d'èxit visual
             const copySuccess = () => {
-                // Evitem el bug del doble clic: si ja està verd, no fem res
                 if (btnCopiar.innerHTML.includes('stroke="#4ade80"')) return;
                 
                 const iconaOriginal = btnCopiar.innerHTML; 
-                
                 btnCopiar.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                 `;
-                
-                setTimeout(() => {
-                    btnCopiar.innerHTML = iconaOriginal;
-                }, 2000);
+                setTimeout(() => { btnCopiar.innerHTML = iconaOriginal; }, 2000);
             };
 
-            // 2. Definim el pla B (per a mòbils antics o connexions HTTP locals)
             const fallbackCopy = () => {
                 try {
                     const textArea = document.createElement("textarea");
@@ -2328,7 +2337,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            // 3. Executem l'API moderna; si falla o no existeix, saltem al pla B
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(codi)
                     .then(copySuccess)
@@ -2341,8 +2349,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // 5. Arrenquem l'aplicació finalment
+    initApp();
 });
-    </script>     
+</script>   
     <script>
 // Espera a que la pàgina carregui completament
 window.addEventListener('load', () => {
