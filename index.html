@@ -203,25 +203,26 @@ body.light-mode [class*="divide-slate-"] {
         <span>Mode Local: Configura Firebase per sincronitzar</span>
     </div>
         <!-- Capçalera principal -->
-        <header class="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
-                    <i class="fa-solid fa-wallet text-lg"></i>
-                </div>
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <h1 class="text-base font-bold text-slate-100 leading-tight">Paradís fiscal</h1>
-                        <span id="syncStatus" class="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" title="Connectant al núvol..."></span>
-                    </div>
-                    <div class="flex items-center space-x-1 text-xs text-slate-400">
-                        <button id="prevMonthBtn" class="hover:text-sky-400 p-0.5" aria-label="Mes anterior"><i class="fa-solid fa-chevron-left"></i></button>
-                        <span id="currentMonthLabel" class="font-semibold text-sky-400 capitalize">Gener 2026</span>
-                        <button id="nextMonthBtn" class="hover:text-sky-400 p-0.5" aria-label="Mes següent"><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
-                </div>
-            </div>
-
+      <header class="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+            <!-- ✅ Nova imatge dins del quadrat blau -->
+            <img src="foto-cantonada.png" alt="Logotip" class="w-6 h-6 object-contain">
+        </div>
+        <div>
             <div class="flex items-center space-x-2">
+                <h1 class="text-base font-bold text-slate-100 leading-tight">Paradís fiscal</h1>
+                <span id="syncStatus" class="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" title="Connectant al núvol..."></span>
+            </div>
+            <div class="flex items-center space-x-1 text-xs text-slate-400">
+                <button id="prevMonthBtn" class="hover:text-sky-400 p-0.5" aria-label="Mes anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="currentMonthLabel" class="font-semibold text-sky-400 capitalize">Gener 2026</span>
+                <button id="nextMonthBtn" class="hover:text-sky-400 p-0.5" aria-label="Mes següent"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex items-center space-x-2">
                 <!-- >>> NOU BOTÓ: CANVI DE VISTA <<< -->
                 <button onclick="window.toggleLayoutMode()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-10 h-10 rounded-lg flex items-center justify-center transition-colors border border-slate-700 active:scale-95 shadow-sm" aria-label="Canviar vista" title="Canviar format de les categories">
                     <i id="layoutToggleIcon" class="fa-solid fa-list text-lg text-slate-300"></i>
