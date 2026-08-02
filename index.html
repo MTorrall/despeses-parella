@@ -2257,32 +2257,6 @@ window.toggleTheme = function() {
     }
 };
 
-// ==========================================
-// LÒGICA DEL CANVI DE VISTA (Quadrat / Rectangular)
-// ==========================================
-let isCompactMode = localStorage.getItem('compactMode') === 'true';
-
-window.toggleLayoutMode = function() {
-    isCompactMode = !isCompactMode;
-    localStorage.setItem('compactMode', isCompactMode);
-    
-    const icon = document.getElementById('layoutToggleIcon');
-    if (icon) {
-        icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
-    }
-    
-    // Assegura't que aquesta funció es diu igual que la teva funció que pinta les categories
-    if (typeof renderCategories === 'function') {
-        renderUI(); 
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    const icon = document.getElementById('layoutToggleIcon');
-    if (icon) {
-        icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
-    }
-});
 
         // ==========================================
         // CÀRREGA INICIAL DE L'APLICACIÓ
