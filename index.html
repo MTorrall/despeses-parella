@@ -259,7 +259,7 @@ body.light-mode [class*="divide-slate-"] {
                 <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-700/50 text-center">
                     <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
                         <span id="labelPerson1" class="text-[10px] text-slate-400 block font-medium truncate">Montse</span>
-                        <span id="totalMarcal" class="text-xs font-bold text-sky-400">0 €</span>
+                        <span id="totalMontse" class="text-xs font-bold text-sky-400">0 €</span>
                     </div>
                     <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
                         <span id="labelPerson2" class="text-[10px] text-slate-400 block font-medium truncate">Meritxell</span>
@@ -727,7 +727,7 @@ body.light-mode [class*="divide-slate-"] {
             { id: 'menjar', name: 'Menjar', icon: 'fa-utensils', color: 'emerald', limit: 400 },
             { id: 'oci', name: 'Oci', icon: 'fa-martini-glass-citrus', color: 'purple', limit: 200 },
             { id: 'casa', name: 'Casa', icon: 'fa-house-chimney', color: 'amber', limit: 500 },
-            { id: 'oci_marcal', name: 'Oci Montse', icon: 'fa-gamepad', color: 'sky', limit: 150 },
+            { id: 'oci_Montse', name: 'Oci Montse', icon: 'fa-gamepad', color: 'sky', limit: 150 },
             { id: 'oci_Meritxell', name: 'Oci Meritxell', icon: 'fa-heart', color: 'pink', limit: 150 }
         ];
 
@@ -798,6 +798,33 @@ body.light-mode [class*="divide-slate-"] {
         let isSettingsLoaded = false;
         let isExpensesLoaded = false;
 
+let isCompactMode = localStorage.getItem('compactMode') === 'true';
+
+        // >>> NOU: Funció per alternar la vista i el disseny del botó <<<
+        window.toggleLayoutMode = function() {
+            isCompactMode = !isCompactMode;
+            localStorage.setItem('compactMode', isCompactMode);
+            
+            const icon = document.getElementById('layoutToggleIcon');
+            if (icon) {
+                icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
+            }
+            
+            // Recarreguem les categories perquè s'apliqui el canvi visual
+            if (typeof renderCategories === 'function') {
+                renderUI(); 
+            }
+        };
+
+        // Quan carrega l'app, posem la icona correcta al botó
+        document.addEventListener('DOMContentLoaded', () => {
+            const icon = document.getElementById('layoutToggleIcon');
+            if (icon) {
+                icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
+            }
+        });
+        // >>> FINAL NOU <<<
+        
 function checkHideLoader() {
             if (isSettingsLoaded && isExpensesLoaded) {
                 // 1. Amaguem el loader antic (si encara el tens)
@@ -1209,7 +1236,7 @@ window.joinCoupleSpace = async function(code) {
 
             let totalAmount = 0;
             let totalLimit = 0;
-            let totalMarcal = 0;
+            let totalMontse = 0;
             let totalMeritxell = 0;
             let totalCompartit = 0;
 
@@ -1222,7 +1249,7 @@ window.joinCoupleSpace = async function(code) {
                 totalAmount += amt;
                 
                 const normPayer = getNormalizedPayer(exp.payer);
-                if(normPayer === 'p1') totalMarcal += amt;
+                if(normPayer === 'p1') totalMontse += amt;
                 else if(normPayer === 'p2') totalMeritxell += amt;
                 else if(normPayer === 'shared') totalCompartit += amt;
             });
@@ -1230,7 +1257,7 @@ window.joinCoupleSpace = async function(code) {
             document.getElementById('globalTotalAmount').innerText = totalAmount.toFixed(2) + ' €';
             document.getElementById('globalTotalLimit').innerText = totalLimit > 0 ? totalLimit.toFixed(0) + ' €' : 'No def.';
             
-            document.getElementById('totalMarcal').innerText = totalMarcal.toFixed(0) + ' €';
+            document.getElementById('totalMontse').innerText = totalMontse.toFixed(0) + ' €';
             document.getElementById('totalMeritxell').innerText = totalMeritxell.toFixed(0) + ' €';
             document.getElementById('totalCompartit').innerText = totalCompartit.toFixed(0) + ' €';
 
@@ -1257,7 +1284,7 @@ window.joinCoupleSpace = async function(code) {
             const grid = document.getElementById('categoriesGrid');
             grid.innerHTML = '';
 
-            categories.forEach(cat => {
+categories.forEach(cat => {
                 const catExpenses = currentMonthExpenses.filter(e => e.categoryId === cat.id);
                 const catTotal = catExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
                 
@@ -1272,30 +1299,64 @@ window.joinCoupleSpace = async function(code) {
                 const iconColor = isExceeded ? COLOR_CLASSES.rose.iconBg : cCls.iconBg;
                 const safeCatName = escapeHtml(cat.name);
 
-                grid.innerHTML += `
-                    <div onclick="window.openCategoryModal('${cat.id}')" class="rounded-2xl p-4 border ${cardBorder} shadow-lg cursor-pointer hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 group relative overflow-hidden">
-                        ${isExceeded ? '<div class="absolute -top-6 -right-6 w-16 h-16 bg-rose-500/20 rounded-full blur-xl"></div>' : ''}
-                        
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg ${iconColor} transition-transform group-hover:scale-110">
-                                <i class="fa-solid ${cat.icon}"></i>
+                // Variable per guardar el codi HTML de la targeta
+                let cardHTML = '';
+
+                if (isCompactMode) {
+                    // --- DISSENY RECTANGULAR COMPACTE ---
+                    cardHTML = `
+                        <div onclick="window.openCategoryModal('${cat.id}')" class="rounded-2xl p-3 border ${cardBorder} shadow-sm cursor-pointer hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 group relative overflow-hidden flex items-center justify-between">
+                            ${isExceeded ? '<div class="absolute inset-0 bg-rose-500/5 blur-xl"></div>' : ''}
+                            
+                            <div class="flex items-center gap-3 relative z-10 w-full">
+                                <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-lg ${iconColor} transition-transform group-hover:scale-110">
+                                    <i class="fa-solid ${cat.icon}"></i>
+                                </div>
+                                <div class="flex-grow min-w-0">
+                                    <h3 class="text-sm font-bold text-slate-200 leading-snug truncate pr-2">${safeCatName}</h3>
+                                    <div class="w-full bg-slate-900 rounded-full h-1 mt-1.5 overflow-hidden border border-slate-700/50">
+                                        <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                                    </div>
+                                </div>
+                                <div class="text-right flex-shrink-0 pl-2">
+                                    <div class="text-base font-black text-white">${catTotal.toFixed(0)} €</div>
+                                    <div class="text-[10px] font-medium text-slate-400 mt-0.5">${cat.limit ? 'de ' + cat.limit + '€' : 'Sense límit'}</div>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <div class="text-xs text-slate-500 font-medium">Límit</div>
-                                <div class="text-xs font-bold text-slate-300">${cat.limit ? cat.limit+'€' : '∞'}</div>
+                            
+                            ${isExceeded ? '<div class="absolute top-1/2 -translate-y-1/2 right-0 w-1 h-8 bg-rose-500 rounded-l-md shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>' : ''}
+                        </div>
+                    `;
+                } else {
+                    // --- DISSENY QUADRAT ORIGINAL (El teu codi exacte d'abans) ---
+                    cardHTML = `
+                        <div onclick="window.openCategoryModal('${cat.id}')" class="rounded-2xl p-4 border ${cardBorder} shadow-lg cursor-pointer hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 group relative overflow-hidden">
+                            ${isExceeded ? '<div class="absolute -top-6 -right-6 w-16 h-16 bg-rose-500/20 rounded-full blur-xl"></div>' : ''}
+                            
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg ${iconColor} transition-transform group-hover:scale-110">
+                                    <i class="fa-solid ${cat.icon}"></i>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-slate-500 font-medium">Límit</div>
+                                    <div class="text-xs font-bold text-slate-300">${cat.limit ? cat.limit+'€' : '∞'}</div>
+                                </div>
                             </div>
+                            
+                            <h3 class="text-sm font-bold text-slate-200 leading-snug truncate">${safeCatName}</h3>
+                            <div class="text-lg font-black text-white mt-1">${catTotal.toFixed(2)} €</div>
+                            
+                            <div class="w-full bg-slate-900 rounded-full h-1.5 mt-3 overflow-hidden border border-slate-700/50">
+                                <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                            </div>
+                            
+                            ${isExceeded ? '<div class="absolute top-2 right-2 text-[9px] bg-rose-500 text-white px-1.5 py-0.5 rounded font-bold uppercase animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]">Superat!</div>' : ''}
                         </div>
-                        
-                        <h3 class="text-sm font-bold text-slate-200 leading-snug truncate">${safeCatName}</h3>
-                        <div class="text-lg font-black text-white mt-1">${catTotal.toFixed(2)} €</div>
-                        
-                        <div class="w-full bg-slate-900 rounded-full h-1.5 mt-3 overflow-hidden border border-slate-700/50">
-                            <div class="${progressColor} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
-                        </div>
-                        
-                        ${isExceeded ? '<div class="absolute top-2 right-2 text-[9px] bg-rose-500 text-white px-1.5 py-0.5 rounded font-bold uppercase animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.6)]">Superat!</div>' : ''}
-                    </div>
-                `;
+                    `;
+                }
+
+                // Inserim el HTML de la targeta que toqui
+                grid.innerHTML += cardHTML;
             });
         }
 
@@ -1768,11 +1829,11 @@ window.editarDespesa = function(id) {
 
     // 2. Línies poligonals per Pagador (Montse, Meritxell, Compartit)
     const getPayerStr = (e) => (e.paidBy || e.payer || e.who || e.user || e.person || '').toString().toLowerCase();
-    const isMarcal = (e) => getPayerStr(e).includes('Montse') || getPayerStr(e).includes('marcal') || getPayerStr(e) === 'p1' || getPayerStr(e) === 'persona 1';
+    const isMontse = (e) => getPayerStr(e).includes('Montse') || getPayerStr(e).includes('Montse') || getPayerStr(e) === 'p1' || getPayerStr(e) === 'persona 1';
     const isMeritxell = (e) => getPayerStr(e).includes('Meritxell') || getPayerStr(e) === 'p2' || getPayerStr(e) === 'persona 2';
 
-    const marcalData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && isMarcal(e))
+    const MontseData = monthsArray.map(mKey => 
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && isMontse(e))
                              .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
     );
 
@@ -1782,14 +1843,14 @@ window.editarDespesa = function(id) {
     );
 
     const compartitData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && !isMarcal(e) && !isMeritxell(e))
+        allHistoricalExpenses.filter(e => e.monthKey === mKey && !isMontse(e) && !isMeritxell(e))
                              .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
     );
 
     const payerDatasets = [
         {
             label: '👤 Montse',
-            data: marcalData,
+            data: MontseData,
             borderColor: '#3b82f6', // Blau
             backgroundColor: '#3b82f6',
             tension: 0.4,
@@ -2168,10 +2229,11 @@ window.renderSettingsList = function() {
             }
         }
 
-  // ==========================================
-        // LÒGICA DEL TEMA CLAR/FOSC (Versió Definitiva)
-        // ==========================================
+// ==========================================
+// LÒGICA DEL TEMA CLAR/FOSC (Versió Definitiva)
+// ==========================================
 window.toggleTheme = function() {
+    // ... el teu codi actual del tema clar/fosc ...
     const body = document.body;
     const html = document.documentElement; // Seleccionem també l'HTML
     const mainIcon = document.getElementById('mainThemeIcon');
@@ -2194,6 +2256,33 @@ window.toggleTheme = function() {
         localStorage.setItem('despeses_theme', 'dark');
     }
 };
+
+// ==========================================
+// LÒGICA DEL CANVI DE VISTA (Quadrat / Rectangular)
+// ==========================================
+let isCompactMode = localStorage.getItem('compactMode') === 'true';
+
+window.toggleLayoutMode = function() {
+    isCompactMode = !isCompactMode;
+    localStorage.setItem('compactMode', isCompactMode);
+    
+    const icon = document.getElementById('layoutToggleIcon');
+    if (icon) {
+        icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
+    }
+    
+    // Assegura't que aquesta funció es diu igual que la teva funció que pinta les categories
+    if (typeof renderCategories === 'function') {
+        renderUI(); 
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const icon = document.getElementById('layoutToggleIcon');
+    if (icon) {
+        icon.className = isCompactMode ? 'fa-solid fa-border-all text-lg text-slate-300' : 'fa-solid fa-list text-lg text-slate-300';
+    }
+});
 
         // ==========================================
         // CÀRREGA INICIAL DE L'APLICACIÓ
