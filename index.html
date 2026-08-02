@@ -362,14 +362,15 @@ body.light-mode [class*="divide-slate-"] {
                         <span>Afegir nova despesa</span>
                     </h4>
 
-                    <!-- Import -->
+                   <!-- Import -->
                     <div>
                         <label class="block text-xs text-slate-400 mb-1 font-medium">Quantitat (€)</label>
                         <div class="relative">
-                            <input type="number" id="expenseAmount" step="0.01" min="0.01" placeholder="0.00" required
+                            <input type="number" id="expenseAmount" step="0.01" min="0.01" max="9999" oninput="if(this.value > 9999) this.value = 9999;" placeholder="0.00" required
                                 class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-2xl font-bold text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all">
                             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xl font-bold">€</span>
                         </div>
+                    </div>
                         <!-- Botons d'accés ràpid d'import -->
                         <div class="flex space-x-2 mt-2">
                             <button type="button" onclick="window.addQuickAmount(1)" class="flex-1 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 active:scale-95">+1€</button>
@@ -382,7 +383,7 @@ body.light-mode [class*="divide-slate-"] {
                     <!-- Concepte / Descripció -->
                     <div>
                         <label class="block text-xs text-slate-400 mb-1 font-medium">Concepte / Descripció</label>
-                        <input type="text" id="expenseConcept" placeholder="Ex: Sopar divendres, Supermercat, Cine..." required
+                        <input type="text" id="expenseConcept" maxlength="24" placeholder="Ex: Sopar divendres, Supermercat, Cine..." required
                             class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500 transition-all">
                     </div>
 
