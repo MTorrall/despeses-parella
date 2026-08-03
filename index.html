@@ -1859,7 +1859,7 @@ window.renderHistoryChart = function(targetYear) {
     if (window.expenseChartInstance) window.expenseChartInstance.destroy();
     if (window.stackedBarChartInstance) window.stackedBarChartInstance.destroy();
 
-    // >>> 1. EXTREURE ELS ANYS I CREAR EL FILTRE <<<
+    // EXTREURE ELS ANYS I CREAR EL FILTRE
     const allMonthKeys = Object.keys(window.historialResums || {});
     let availableYears = [...new Set(allMonthKeys.map(k => k.split('-')[0]))].sort((a, b) => b - a); 
     
@@ -1868,7 +1868,7 @@ window.renderHistoryChart = function(targetYear) {
 
     let yearToDisplay = targetYear || availableYears[0];
 
-    // Inserim la interfície (el desplegable) just a sobre del gràfic si no hi és
+    // Inserim la interfície (el desplegable)
     let filterContainer = document.getElementById('chartYearFilterContainer');
     const canvasWrapper = canvas.closest('.relative') || canvas.parentElement;
     
@@ -1895,19 +1895,18 @@ window.renderHistoryChart = function(targetYear) {
         `<option value="${y}" ${y === yearToDisplay ? 'selected' : ''}>${y}</option>`
     ).join('');
 
-    // >>> NOU: CREAR CONTENIDOR PEL GRÀFIC DE BARRES (Si no existeix) <<<
+    // CREAR CONTENIDOR PEL GRÀFIC DE BARRES
     let barContainer = document.getElementById('stackedBarContainer');
     if (!barContainer) {
         barContainer = document.createElement('div');
         barContainer.id = 'stackedBarContainer';
-        // Li donem un marge superior (mt-8) i una alçada (h-64)
         barContainer.className = 'relative h-64 w-full mt-8 pt-6 border-t border-slate-800'; 
         barContainer.innerHTML = '<h3 class="text-slate-400 text-xs font-semibold mb-2 text-center uppercase tracking-wider">Despesa Total per Mes</h3><canvas id="stackedBarChart"></canvas>';
         canvasWrapper.parentElement.appendChild(barContainer);
     }
     const barCanvas = document.getElementById('stackedBarChart');
 
-    // >>> 2. GENERAR LA LÍNIA DE TEMPS ESTABLE (12 MESOS) <<<
+    // GENERAR LA LÍNIA DE TEMPS ESTABLE (12 MESOS)
     const monthsArray = [];
     const monthNames = ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Des"];
     
@@ -1916,7 +1915,7 @@ window.renderHistoryChart = function(targetYear) {
         monthsArray.push(mKey);
     }
 
-    // >>> 3. DADES PEL GRÀFIC POLIGONAL (Línies) <<<
+    // DADES PEL GRÀFIC POLIGONAL
     const categoryDatasets = categories.map(cat => {
         const data = monthsArray.map(mKey => {
             const resumMes = window.historialResums[mKey] || {};
@@ -1956,7 +1955,7 @@ window.renderHistoryChart = function(targetYear) {
 
     const allDatasets = [...categoryDatasets, ...payerDatasets];
 
-    // >>> 4. DADES PEL GRÀFIC DE BARRES APILADES <<<
+    // DADES PEL GRÀFIC DE BARRES APILADES
     const barDatasets = categories.map(cat => {
         const data = monthsArray.map(mKey => {
             const resumMes = window.historialResums[mKey] || {};
@@ -1966,15 +1965,14 @@ window.renderHistoryChart = function(targetYear) {
         return {
             label: cat.name,
             data: data,
-            // Per les barres fem servir el color sòlid, sense transparències
             backgroundColor: CHART_COLORS[cat.color] || '#cbd5e1',
             borderWidth: 0 
         };
     });
 
-    // >>> 5. PINTAR ELS DOS GRÀFICS <<<
+    // PINTAR ELS DOS GRÀFICS
     
-    // Gràfic Poligonal (Línies)
+    // 1. Gràfic Poligonal (Línies)
     window.expenseChartInstance = new Chart(canvas, {
         type: 'line',
         data: { labels: monthNames, datasets: allDatasets }, 
@@ -1994,7 +1992,7 @@ window.renderHistoryChart = function(targetYear) {
         }
     });
 
-    // Gràfic de Barres Apilades
+    // 2. Gràfic de Barres Apilades
     window.stackedBarChartInstance = new Chart(barCanvas, {
         type: 'bar',
         data: { labels: monthNames, datasets: barDatasets },
@@ -2003,13 +2001,33 @@ window.renderHistoryChart = function(targetYear) {
             maintainAspectRatio: false,
             color: '#94a3b8',
             plugins: {
-                legend: { display: false }, // Ho amaguem perquè ja tenim la llegenda a dalt
-                tooltip: { mode: 'index', intersect: false }
+                legend: { display: false },
+                tooltip: { 
+                    mode: 'index', 
+                    intersect: false,
+                    // >>> NOU: Afegit el càlcul del Total al Tooltip <<<
+                    callbacks: {
+                        footer: function(tooltipItems) {
+                            let total = 0;
+                            // Sumem els valors de totes les barres apilades d'aquest mes
+                            tooltipItems.forEach(function(tooltipItem) {
+                                total += tooltipItem.parsed.y;
+                            });
+                            
+                            // Si hi ha despeses, generem la fila del total formatada
+                            if (total > 0) {
+                                const totalFormatat = total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                return '\nTotal: ' + totalFormatat + ' €';
+                            }
+                            return '';
+                        }
+                    }
+                }
             },
             scales: {
                 x: { 
                     stacked: true, 
-                    grid: { display: false }, // Traiem la quadrícula vertical perquè quedi més net
+                    grid: { display: false }, 
                     ticks: { color: '#64748b', font: { size: 10 } } 
                 },
                 y: { 
