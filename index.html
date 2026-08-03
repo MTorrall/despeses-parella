@@ -684,8 +684,7 @@ body.light-mode [class*="divide-slate-"] {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDocs, getDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, getDocs, getDoc, query, where, increment, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         // ==============================================================================
         // CONFIGURACIÓ DE FIREBASE (REQUERIT PER SINCRONITZAR ENTRE MÒBILS)
         // ==============================================================================
@@ -1512,7 +1511,6 @@ if (editCatDiv) {
 window.handleExpenseSubmit = async function(e) {
     e.preventDefault();
 
-    // 🟢 CANVI 1: Guardem si és una nova despesa A L'INICI de la funció
     const esNovaDespesa = !idDespesaEnEdicio;
 
     if(!activeCategory) return;
@@ -1529,7 +1527,6 @@ window.handleExpenseSubmit = async function(e) {
     submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-lg"></i>';
 
     try {
-        // 1. Preparem l'objecte amb les dades de l'HTML
         const dadesDespesa = {
             categoryId: document.getElementById('expenseCategory').value || activeCategory.id,
             amount: amount,
@@ -1540,15 +1537,56 @@ window.handleExpenseSubmit = async function(e) {
         };
 
         if (db) {
+            // >>> NOU: Determinar la clau del pagador actual per al resum <<<
+            let clauPagador = 'compartit';
+            const normPayer = dadesDespesa.payer.toLowerCase();
+            if (normPayer.includes('montse') || normPayer === 'p1') clauPagador = 'Montse';
+            else if (normPayer.includes('meritxell') || normPayer === 'p2') clauPagador = 'Meritxell';
+
             // --- MODE NÚVOL (FIREBASE) ---
             if (idDespesaEnEdicio) {
-                // MODE EDICIÓ: Actualitzem el document que ja existeix
+                // MODE EDICIÓ:
+                // 1. Primer busquem la despesa antiga per saber què hem de restar al resum
+                const antigaDespesa = expenses.find(e => e.id === idDespesaEnEdicio);
+                if (antigaDespesa) {
+                    // >>> NOU: Determinar el pagador antic per poder-lo restar <<<
+                    let clauPagadorAntiga = 'compartit';
+                    const normPayerAntic = antigaDespesa.payer.toLowerCase();
+                    if (normPayerAntic.includes('montse') || normPayerAntic === 'p1') clauPagadorAntiga = 'Montse';
+                    else if (normPayerAntic.includes('meritxell') || normPayerAntic === 'p2') clauPagadorAntiga = 'Meritxell';
+
+                    const oldSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + antigaDespesa.monthKey);
+                    await setDoc(oldSummaryRef, {
+                        totalGeneral: increment(-antigaDespesa.amount),
+                        [antigaDespesa.categoryId]: increment(-antigaDespesa.amount),
+                        [clauPagadorAntiga]: increment(-antigaDespesa.amount) // >>> NOU: Restem al pagador antic <<<
+                    }, { merge: true });
+                }
+
+                // 2. Guardem la nova versió de la despesa
                 const docRef = doc(EXPENSES_COLLECTION, idDespesaEnEdicio);
                 await setDoc(docRef, dadesDespesa);
+
+                // 3. Sumem els nous valors al resum
+                const newSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
+                await setDoc(newSummaryRef, {
+                    totalGeneral: increment(dadesDespesa.amount),
+                    [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
+                    [clauPagador]: increment(dadesDespesa.amount) // >>> NOU: Sumem al nou pagador <<<
+                }, { merge: true });
+
             } else {
                 // MODE CREACIÓ: Creem un document nou des de zero
                 const newDocRef = doc(EXPENSES_COLLECTION);
                 await setDoc(newDocRef, dadesDespesa);
+
+                // ACTUALITZEM EL RESUM MENSUAL (Sumem import, categoria i pagador)
+                const summaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
+                await setDoc(summaryRef, {
+                    totalGeneral: increment(dadesDespesa.amount),
+                    [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
+                    [clauPagador]: increment(dadesDespesa.amount) // >>> NOU: Sumem al pagador <<<
+                }, { merge: true });
             }
         } else {
             // --- MODE LOCAL (SENSE CONNEXIÓ) ---
@@ -1556,14 +1594,12 @@ window.handleExpenseSubmit = async function(e) {
             let allExp = savedExp ? JSON.parse(savedExp) : [];
             
             if (idDespesaEnEdicio) {
-                // MODE EDICIÓ LOCAL
                 const index = allExp.findIndex(e => e.id === idDespesaEnEdicio);
                 if (index !== -1) {
                     dadesDespesa.id = idDespesaEnEdicio;
                     allExp[index] = dadesDespesa;
                 }
             } else {
-                // MODE CREACIÓ LOCAL
                 dadesDespesa.id = 'exp_' + Date.now() + Math.floor(Math.random()*1000);
                 allExp.push(dadesDespesa);
             }
@@ -1572,54 +1608,64 @@ window.handleExpenseSubmit = async function(e) {
             syncMonthData(getCurrentMonthKey());
         }
         
-        // 🟢 CANVI 2: Disparem el confeti NOMÉS si era una nova despesa
         if (esNovaDespesa) {
             triggerConfetti(false);
         }
 
-        // 2. Neteja: Tornem l'aplicació a l'estat normal
         idDespesaEnEdicio = null; 
         loadedHistoricalData = false;
         
         document.getElementById('expenseAmount').value = '';
         document.getElementById('expenseConcept').value = '';
 
-        // >>> NOU CODI: AMAGUEM EL SELECTOR <<<
         const editCatDiv = document.getElementById('editCategoryDiv');
         if (editCatDiv) {
             editCatDiv.classList.add('hidden');
         }
-        // >>> FINAL NOU CODI <<<
         
     } catch (err) {
         console.error(err);
         showCustomModal("Error", "No s'ha pogut guardar la despesa.", null, true);
     } finally {
-        // 3. Tornem a posar el text original al botó
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i><span>Afegir Despesa</span>';
     }
 }
+window.deleteExpense = function(id) {
+    showCustomModal("Eliminar Despesa", "Estàs segur que vols eliminar aquesta despesa? Aquesta acció no es pot desfer.", async () => {
+        try {
+            if (db) {
+                const expToDelete = expenses.find(e => e.id === id);
 
-        window.deleteExpense = function(id) {
-            showCustomModal("Eliminar Despesa", "Estàs segur que vols eliminar aquesta despesa? Aquesta acció no es pot desfer.", async () => {
-                try {
-                    if (db) {
-                        await deleteDoc(doc(EXPENSES_COLLECTION, id));
-                    } else {
-                        const savedExp = localStorage.getItem('expenses_' + coupleId);
-                        let allExp = savedExp ? JSON.parse(savedExp) : [];
-                        allExp = allExp.filter(e => e.id !== id);
-                        localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
-                        syncMonthData(getCurrentMonthKey());
-                    }
-                    loadedHistoricalData = false;
-                } catch(err) {
-                    console.error(err);
+                await deleteDoc(doc(EXPENSES_COLLECTION, id));
+
+                if (expToDelete) {
+                    // >>> NOU: Calculem qui l'havia pagat per restar-li <<<
+                    let clauPagador = 'compartit';
+                    const normPayer = (expToDelete.payer || '').toLowerCase();
+                    if (normPayer.includes('montse') || normPayer === 'p1') clauPagador = 'Montse';
+                    else if (normPayer.includes('meritxell') || normPayer === 'p2') clauPagador = 'Meritxell';
+
+                    const summaryRef = doc(db, 'monthly_summaries', coupleId + '_' + expToDelete.monthKey);
+                    await setDoc(summaryRef, {
+                        totalGeneral: increment(-expToDelete.amount),
+                        [expToDelete.categoryId]: increment(-expToDelete.amount),
+                        [clauPagador]: increment(-expToDelete.amount) // >>> NOU: Restem del pagador <<<
+                    }, { merge: true });
                 }
-            });
+            } else {
+                const savedExp = localStorage.getItem('expenses_' + coupleId);
+                let allExp = savedExp ? JSON.parse(savedExp) : [];
+                allExp = allExp.filter(e => e.id !== id);
+                localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
+                syncMonthData(getCurrentMonthKey());
+            }
+            loadedHistoricalData = false;
+        } catch(err) {
+            console.error(err);
         }
-
+    });
+}
 window.editarDespesa = function(id) {
     const despesa = expenses.find(d => d.id === id);
     
@@ -1696,36 +1742,55 @@ window.editarDespesa = function(id) {
             }
         }
 
-        async function loadHistoricalDataForChart() {
-            const canvasContainer = document.getElementById('historyChartContainer');
-            
-            if (!expenseChartInstance) {
-                const loadingMsg = document.createElement('div');
-                loadingMsg.id = 'chartLoadingMsg';
-                loadingMsg.className = 'absolute inset-0 flex items-center justify-center bg-slate-950/80 z-10 text-sky-400 text-xs font-bold rounded-xl';
-                loadingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Carregant historial complet...';
-                canvasContainer.querySelector('div.relative').appendChild(loadingMsg);
-            }
+async function loadHistoricalDataForChart() {
+    const canvasContainer = document.getElementById('historyChartContainer');
+    
+    if (!expenseChartInstance) {
+        const loadingMsg = document.createElement('div');
+        loadingMsg.id = 'chartLoadingMsg';
+        loadingMsg.className = 'absolute inset-0 flex items-center justify-center bg-slate-950/80 z-10 text-sky-400 text-xs font-bold rounded-xl';
+        loadingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Carregant historial complet...';
+        canvasContainer.querySelector('div.relative').appendChild(loadingMsg);
+    }
 
-            try {
-                if (db) {
-                    const snap = await getDocs(EXPENSES_COLLECTION);
-                    allHistoricalExpenses = [];
-                    snap.forEach(doc => allHistoricalExpenses.push({ id: doc.id, ...doc.data() }));
-                } else {
-                    const savedExp = localStorage.getItem('expenses_' + coupleId);
-                    allHistoricalExpenses = savedExp ? JSON.parse(savedExp) : [];
+    try {
+        window.historialResums = {}; // Guardarem tots els mesos aquí
+        
+        if (db) {
+            // Llegim TOTS els resums de la col·lecció (molt pocs documents, súper ràpid)
+            const snap = await getDocs(collection(db, 'monthly_summaries'));
+            snap.forEach(doc => {
+                if (doc.id.startsWith(coupleId + '_')) {
+                    const monthKey = doc.id.replace(coupleId + '_', '');
+                    window.historialResums[monthKey] = doc.data();
                 }
-                loadedHistoricalData = true;
-                renderHistoryChart();
-            } catch(e) {
-                console.error("Error carregant dades pel gràfic:", e);
-                showCustomModal("Error", "No s'ha pogut carregar l'historial complet.", null, true);
-            } finally {
-                const msg = document.getElementById('chartLoadingMsg');
-                if (msg) msg.remove();
-            }
+            });
+        } else {
+            // Mode Local (SENSE CONNEXIÓ)
+            const savedExp = localStorage.getItem('expenses_' + coupleId);
+            const allExp = savedExp ? JSON.parse(savedExp) : [];
+            allExp.forEach(e => {
+                if (!window.historialResums[e.monthKey]) window.historialResums[e.monthKey] = {};
+                window.historialResums[e.monthKey][e.categoryId] = (window.historialResums[e.monthKey][e.categoryId] || 0) + parseFloat(e.amount || 0);
+                
+                let pKey = 'compartit';
+                const pStr = (e.paidBy || e.payer || '').toLowerCase();
+                if (pStr.includes('montse') || pStr === 'p1') pKey = 'Montse';
+                else if (pStr.includes('meritxell') || pStr === 'p2') pKey = 'Meritxell';
+                
+                window.historialResums[e.monthKey][pKey] = (window.historialResums[e.monthKey][pKey] || 0) + parseFloat(e.amount || 0);
+            });
         }
+        loadedHistoricalData = true;
+        renderHistoryChart();
+    } catch(e) {
+        console.error("Error carregant dades pel gràfic:", e);
+        showCustomModal("Error", "No s'ha pogut carregar l'historial complet.", null, true);
+    } finally {
+        const msg = document.getElementById('chartLoadingMsg');
+        if (msg) msg.remove();
+    }
+}
 
         function renderHistoryList() {
             const listDiv = document.getElementById('allExpensesList');
@@ -1799,11 +1864,11 @@ window.editarDespesa = function(id) {
         }
         window.renderHistoryList = renderHistoryList;
 
- function renderHistoryChart() {
+function renderHistoryChart() {
     const canvas = document.getElementById('expensesChart');
     if(!canvas) return;
 
-    // Si anteriorment teníem el gràfic de barres separat, el netegem de la pantalla
+    // Si anteriorment teníem el gràfic de barres separat, el netegem
     const oldPayerCanvas = document.getElementById('payerExpensesChart');
     if (oldPayerCanvas) {
         const cardToRemove = oldPayerCanvas.closest('.bg-slate-900') || oldPayerCanvas.parentElement;
@@ -1816,16 +1881,16 @@ window.editarDespesa = function(id) {
         expenseChartInstance.destroy();
     }
 
-    const monthsSet = new Set(allHistoricalExpenses.map(e => e.monthKey));
-    let monthsArray = Array.from(monthsSet).sort();
+    // Obtenim l'array de mesos ordenats directament de les claus dels resums
+    let monthsArray = Object.keys(window.historialResums || {}).sort();
     if(monthsArray.length === 0) monthsArray = [getCurrentMonthKey()];
 
     // 1. Línies poligonals per Categoria
     const categoryDatasets = categories.map(cat => {
         const data = monthsArray.map(mKey => {
-            return allHistoricalExpenses
-                .filter(e => e.monthKey === mKey && e.categoryId === cat.id)
-                .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+            // Si el mes existeix, agafem la suma de la categoria, si no 0
+            const resumMes = window.historialResums[mKey] || {};
+            return resumMes[cat.id] || 0;
         });
 
         return {
@@ -1840,35 +1905,20 @@ window.editarDespesa = function(id) {
         };
     });
 
-    // 2. Línies poligonals per Pagador (Montse, Meritxell, Compartit)
-    const getPayerStr = (e) => (e.paidBy || e.payer || e.who || e.user || e.person || '').toString().toLowerCase();
-    const isMontse = (e) => getPayerStr(e).includes('Montse') || getPayerStr(e).includes('Montse') || getPayerStr(e) === 'p1' || getPayerStr(e) === 'persona 1';
-    const isMeritxell = (e) => getPayerStr(e).includes('Meritxell') || getPayerStr(e) === 'p2' || getPayerStr(e) === 'persona 2';
-
-    const MontseData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && isMontse(e))
-                             .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
-    );
-
-    const MeritxellData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && isMeritxell(e))
-                             .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
-    );
-
-    const compartitData = monthsArray.map(mKey => 
-        allHistoricalExpenses.filter(e => e.monthKey === mKey && !isMontse(e) && !isMeritxell(e))
-                             .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0)
-    );
+    // 2. Línies poligonals per Pagador
+    const MontseData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['Montse'] || 0);
+    const MeritxellData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['Meritxell'] || 0);
+    const compartitData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['compartit'] || 0);
 
     const payerDatasets = [
         {
             label: '👤 Montse',
             data: MontseData,
-            borderColor: '#3b82f6', // Blau
+            borderColor: '#3b82f6',
             backgroundColor: '#3b82f6',
             tension: 0.4,
             borderWidth: 3,
-            borderDash: [6, 4], // Línia discontínua per destacar dels tipus de despesa
+            borderDash: [6, 4],
             pointRadius: 4,
             fill: false,
             pointBackgroundColor: '#3b82f6'
@@ -1876,7 +1926,7 @@ window.editarDespesa = function(id) {
         {
             label: '👤 Meritxell',
             data: MeritxellData,
-            borderColor: '#ec4899', // Rosa
+            borderColor: '#ec4899',
             backgroundColor: '#ec4899',
             tension: 0.4,
             borderWidth: 3,
@@ -1888,7 +1938,7 @@ window.editarDespesa = function(id) {
         {
             label: '👥 Compartit',
             data: compartitData,
-            borderColor: '#10b981', // Verd
+            borderColor: '#10b981',
             backgroundColor: '#10b981',
             tension: 0.4,
             borderWidth: 3,
@@ -1899,7 +1949,6 @@ window.editarDespesa = function(id) {
         }
     ];
 
-    // Unim totes les opcions en un únic gràfic
     const allDatasets = [...categoryDatasets, ...payerDatasets];
 
     const labels = monthsArray.map(m => {
@@ -2137,33 +2186,38 @@ window.renderSettingsList = function() {
             }
         }
 
-        window.confirmResetCurrentMonth = function() {
-            showCustomModal("ATENCIÓ PERILL", "Aquesta acció esborrarà TOTES les despeses d'aquest mes per a tots dos usuaris de forma irreversible. N'estàs totalment segur?", async () => {
-                const monthKey = getCurrentMonthKey();
-                
-                if (db) {
-                    const toDelete = expenses.filter(e => e.monthKey === monthKey);
-                    
-                    let deletedCount = 0;
-                    for(const exp of toDelete) {
-                        await deleteDoc(doc(EXPENSES_COLLECTION, exp.id));
-                        deletedCount++;
-                    }
-                    showCustomModal("Èxit", `S'han eliminat ${deletedCount} despeses del mes de ${formatMonthReadable(activeDate)}.`, null, true);
-                } else {
-                    const savedExp = localStorage.getItem('expenses_' + coupleId);
-                    let allExp = savedExp ? JSON.parse(savedExp) : [];
-                    const originalLength = allExp.length;
-                    allExp = allExp.filter(e => e.monthKey !== monthKey);
-                    localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
-                    syncMonthData(monthKey);
-                    showCustomModal("Èxit", `S'han eliminat ${originalLength - allExp.length} despeses del mes de ${formatMonthReadable(activeDate)}.`, null, true);
-                }
-                
-                loadedHistoricalData = false;
-                window.closeSettingsModal();
-            });
+window.confirmResetCurrentMonth = function() {
+    showCustomModal("ATENCIÓ PERILL", "Aquesta acció esborrarà TOTES les despeses d'aquest mes per a tots dos usuaris de forma irreversible. N'estàs totalment segur?", async () => {
+        const monthKey = getCurrentMonthKey();
+        
+        if (db) {
+            const toDelete = expenses.filter(e => e.monthKey === monthKey);
+            
+            let deletedCount = 0;
+            for(const exp of toDelete) {
+                await deleteDoc(doc(EXPENSES_COLLECTION, exp.id));
+                deletedCount++;
+            }
+            
+            // >>> NOU CODI (PAS 4): Esborrem també el document de resum d'aquest mes <<<
+            await deleteDoc(doc(db, 'monthly_summaries', coupleId + '_' + monthKey));
+            // >>> FINAL NOU CODI <<<
+
+            showCustomModal("Èxit", `S'han eliminat ${deletedCount} despeses del mes de ${formatMonthReadable(activeDate)}.`, null, true);
+        } else {
+            const savedExp = localStorage.getItem('expenses_' + coupleId);
+            let allExp = savedExp ? JSON.parse(savedExp) : [];
+            const originalLength = allExp.length;
+            allExp = allExp.filter(e => e.monthKey !== monthKey);
+            localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
+            syncMonthData(monthKey);
+            showCustomModal("Èxit", `S'han eliminat ${originalLength - allExp.length} despeses del mes de ${formatMonthReadable(activeDate)}.`, null, true);
         }
+        
+        loadedHistoricalData = false;
+        window.closeSettingsModal();
+    });
+}
 
 function triggerConfetti(isAlert = false) {
     if (typeof confetti !== 'function') return;
