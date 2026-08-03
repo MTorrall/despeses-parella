@@ -1843,10 +1843,11 @@ window.loadHistoricalDataForChart = async function() {
         }
         window.renderHistoryList = renderHistoryList;
 
-window.renderHistoryChart = function() {
+window.renderHistoryChart = function(targetYear) {
     const canvas = document.getElementById('expensesChart');
     if(!canvas) return;
 
+    // Neteja de gràfics antics per evitar encavalcaments
     const oldPayerCanvas = document.getElementById('payerExpensesChart');
     if (oldPayerCanvas) {
         const cardToRemove = oldPayerCanvas.closest('.bg-slate-900') || oldPayerCanvas.parentElement;
@@ -1859,13 +1860,61 @@ window.renderHistoryChart = function() {
         expenseChartInstance.destroy();
     }
 
-    let monthsArray = Object.keys(window.historialResums || {}).sort();
-    if(monthsArray.length === 0) monthsArray = [getCurrentMonthKey()];
+    // >>> 1. EXTREURE ELS ANYS I CREAR EL FILTRE <<<
+    const allMonthKeys = Object.keys(window.historialResums || {});
+    // Traiem només l'any de cada clau (YYYY-MM) i treballem amb els únics, ordenats de més nou a més antic
+    let availableYears = [...new Set(allMonthKeys.map(k => k.split('-')[0]))].sort((a, b) => b - a); 
+    
+    // Si no hi ha dades encara, agafem l'any actual
+    const currentYearStr = new Date().getFullYear().toString();
+    if (availableYears.length === 0) availableYears = [currentYearStr];
 
+    // L'any que mostrarem: el que demana el selector, o el més recent per defecte
+    let yearToDisplay = targetYear || availableYears[0];
+
+    // Inserim la interfície (el desplegable) just a sobre del gràfic si no hi és
+    let filterContainer = document.getElementById('chartYearFilterContainer');
+    if (!filterContainer) {
+        filterContainer = document.createElement('div');
+        filterContainer.id = 'chartYearFilterContainer';
+        filterContainer.className = 'flex justify-end mb-4 px-2';
+        filterContainer.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <label for="chartYearSelect" class="text-slate-400 text-sm font-semibold">Any:</label>
+                <select id="chartYearSelect" class="bg-slate-800 text-slate-200 border border-slate-700 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-sky-500 cursor-pointer">
+                </select>
+            </div>
+        `;
+        const canvasWrapper = canvas.closest('.relative') || canvas.parentElement;
+        canvasWrapper.parentElement.insertBefore(filterContainer, canvasWrapper);
+
+        // Quan es canvia l'any, tornem a pintar passant el nou any
+        document.getElementById('chartYearSelect').addEventListener('change', (e) => {
+            renderHistoryChart(e.target.value);
+        });
+    }
+
+    // Actualitzem les opcions del select desplegable
+    const select = document.getElementById('chartYearSelect');
+    select.innerHTML = availableYears.map(y => 
+        `<option value="${y}" ${y === yearToDisplay ? 'selected' : ''}>${y}</option>`
+    ).join('');
+
+    // >>> 2. GENERAR LA LÍNIA DE TEMPS ESTABLE (12 MESOS) <<<
+    const monthsArray = [];
+    const monthNames = ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Des"];
+    
+    // Creem sempre les claus "YYYY-01", "YYYY-02", etc.
+    for (let i = 1; i <= 12; i++) {
+        const mKey = `${yearToDisplay}-${i.toString().padStart(2, '0')}`;
+        monthsArray.push(mKey);
+    }
+
+    // >>> 3. MAPEJAT DE DADES (POSANT 0 ON NO HI HA RES) <<<
     const categoryDatasets = categories.map(cat => {
         const data = monthsArray.map(mKey => {
             const resumMes = window.historialResums[mKey] || {};
-            return resumMes[cat.id] || 0;
+            return resumMes[cat.id] || 0; // Si no existeix el mes o la categoria, 0
         });
 
         return {
@@ -1880,13 +1929,12 @@ window.renderHistoryChart = function() {
         };
     });
 
-    // >>> AGAFEM ELS NOMS DINÀMICS (Marçal i Laura) <<<
     const nomP1 = getPayerDisplayName('p1') || 'Persona 1';
     const nomP2 = getPayerDisplayName('p2') || 'Persona 2';
 
     const P1Data = monthsArray.map(mKey => {
         const resum = window.historialResums[mKey] || {};
-        return (resum['p1'] || 0) + (resum['Montse'] || 0); // Sumem l'antic per si de cas
+        return (resum['p1'] || 0) + (resum['Montse'] || 0); 
     });
     const P2Data = monthsArray.map(mKey => {
         const resum = window.historialResums[mKey] || {};
@@ -1935,14 +1983,10 @@ window.renderHistoryChart = function() {
 
     const allDatasets = [...categoryDatasets, ...payerDatasets];
 
-    const labels = monthsArray.map(m => {
-        const [y, mo] = m.split('-');
-        return `${mo}/${y.substring(2)}`;
-    });
-
+    // >>> 4. PINTAR EL GRÀFIC <<<
     expenseChartInstance = new Chart(canvas, {
         type: 'line',
-        data: { labels: labels, datasets: allDatasets },
+        data: { labels: monthNames, datasets: allDatasets }, // Fem servir noms curts de mes (Gen, Feb...)
         options: {
             responsive: true,
             maintainAspectRatio: false,
