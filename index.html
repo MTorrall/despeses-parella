@@ -1856,24 +1856,22 @@ window.renderHistoryChart = function(targetYear) {
         }
     }
 
-    if (expenseChartInstance) {
-        expenseChartInstance.destroy();
-    }
+    if (window.expenseChartInstance) window.expenseChartInstance.destroy();
+    if (window.stackedBarChartInstance) window.stackedBarChartInstance.destroy();
 
     // >>> 1. EXTREURE ELS ANYS I CREAR EL FILTRE <<<
     const allMonthKeys = Object.keys(window.historialResums || {});
-    // Traiem només l'any de cada clau (YYYY-MM) i treballem amb els únics, ordenats de més nou a més antic
     let availableYears = [...new Set(allMonthKeys.map(k => k.split('-')[0]))].sort((a, b) => b - a); 
     
-    // Si no hi ha dades encara, agafem l'any actual
     const currentYearStr = new Date().getFullYear().toString();
     if (availableYears.length === 0) availableYears = [currentYearStr];
 
-    // L'any que mostrarem: el que demana el selector, o el més recent per defecte
     let yearToDisplay = targetYear || availableYears[0];
 
     // Inserim la interfície (el desplegable) just a sobre del gràfic si no hi és
     let filterContainer = document.getElementById('chartYearFilterContainer');
+    const canvasWrapper = canvas.closest('.relative') || canvas.parentElement;
+    
     if (!filterContainer) {
         filterContainer = document.createElement('div');
         filterContainer.id = 'chartYearFilterContainer';
@@ -1885,36 +1883,44 @@ window.renderHistoryChart = function(targetYear) {
                 </select>
             </div>
         `;
-        const canvasWrapper = canvas.closest('.relative') || canvas.parentElement;
         canvasWrapper.parentElement.insertBefore(filterContainer, canvasWrapper);
 
-        // Quan es canvia l'any, tornem a pintar passant el nou any
         document.getElementById('chartYearSelect').addEventListener('change', (e) => {
             renderHistoryChart(e.target.value);
         });
     }
 
-    // Actualitzem les opcions del select desplegable
     const select = document.getElementById('chartYearSelect');
     select.innerHTML = availableYears.map(y => 
         `<option value="${y}" ${y === yearToDisplay ? 'selected' : ''}>${y}</option>`
     ).join('');
 
+    // >>> NOU: CREAR CONTENIDOR PEL GRÀFIC DE BARRES (Si no existeix) <<<
+    let barContainer = document.getElementById('stackedBarContainer');
+    if (!barContainer) {
+        barContainer = document.createElement('div');
+        barContainer.id = 'stackedBarContainer';
+        // Li donem un marge superior (mt-8) i una alçada (h-64)
+        barContainer.className = 'relative h-64 w-full mt-8 pt-6 border-t border-slate-800'; 
+        barContainer.innerHTML = '<h3 class="text-slate-400 text-xs font-semibold mb-2 text-center uppercase tracking-wider">Despesa Total per Mes</h3><canvas id="stackedBarChart"></canvas>';
+        canvasWrapper.parentElement.appendChild(barContainer);
+    }
+    const barCanvas = document.getElementById('stackedBarChart');
+
     // >>> 2. GENERAR LA LÍNIA DE TEMPS ESTABLE (12 MESOS) <<<
     const monthsArray = [];
     const monthNames = ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Des"];
     
-    // Creem sempre les claus "YYYY-01", "YYYY-02", etc.
     for (let i = 1; i <= 12; i++) {
         const mKey = `${yearToDisplay}-${i.toString().padStart(2, '0')}`;
         monthsArray.push(mKey);
     }
 
-    // >>> 3. MAPEJAT DE DADES (POSANT 0 ON NO HI HA RES) <<<
+    // >>> 3. DADES PEL GRÀFIC POLIGONAL (Línies) <<<
     const categoryDatasets = categories.map(cat => {
         const data = monthsArray.map(mKey => {
             const resumMes = window.historialResums[mKey] || {};
-            return resumMes[cat.id] || 0; // Si no existeix el mes o la categoria, 0
+            return resumMes[cat.id] || 0;
         });
 
         return {
@@ -1943,50 +1949,35 @@ window.renderHistoryChart = function(targetYear) {
     const compartitData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['compartit'] || 0);
 
     const payerDatasets = [
-        {
-            label: `👤 ${nomP1}`,
-            data: P1Data,
-            borderColor: '#3b82f6',
-            backgroundColor: '#3b82f6',
-            tension: 0.4,
-            borderWidth: 3,
-            borderDash: [6, 4],
-            pointRadius: 4,
-            fill: false,
-            pointBackgroundColor: '#3b82f6'
-        },
-        {
-            label: `👤 ${nomP2}`,
-            data: P2Data,
-            borderColor: '#ec4899',
-            backgroundColor: '#ec4899',
-            tension: 0.4,
-            borderWidth: 3,
-            borderDash: [6, 4],
-            pointRadius: 4,
-            fill: false,
-            pointBackgroundColor: '#ec4899'
-        },
-        {
-            label: '👥 Compartit',
-            data: compartitData,
-            borderColor: '#10b981',
-            backgroundColor: '#10b981',
-            tension: 0.4,
-            borderWidth: 3,
-            borderDash: [6, 4],
-            pointRadius: 4,
-            fill: false,
-            pointBackgroundColor: '#10b981'
-        }
+        { label: `👤 ${nomP1}`, data: P1Data, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#3b82f6' },
+        { label: `👤 ${nomP2}`, data: P2Data, borderColor: '#ec4899', backgroundColor: '#ec4899', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#ec4899' },
+        { label: '👥 Compartit', data: compartitData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#10b981' }
     ];
 
     const allDatasets = [...categoryDatasets, ...payerDatasets];
 
-    // >>> 4. PINTAR EL GRÀFIC <<<
-    expenseChartInstance = new Chart(canvas, {
+    // >>> 4. DADES PEL GRÀFIC DE BARRES APILADES <<<
+    const barDatasets = categories.map(cat => {
+        const data = monthsArray.map(mKey => {
+            const resumMes = window.historialResums[mKey] || {};
+            return resumMes[cat.id] || 0;
+        });
+
+        return {
+            label: cat.name,
+            data: data,
+            // Per les barres fem servir el color sòlid, sense transparències
+            backgroundColor: CHART_COLORS[cat.color] || '#cbd5e1',
+            borderWidth: 0 
+        };
+    });
+
+    // >>> 5. PINTAR ELS DOS GRÀFICS <<<
+    
+    // Gràfic Poligonal (Línies)
+    window.expenseChartInstance = new Chart(canvas, {
         type: 'line',
-        data: { labels: monthNames, datasets: allDatasets }, // Fem servir noms curts de mes (Gen, Feb...)
+        data: { labels: monthNames, datasets: allDatasets }, 
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -1998,6 +1989,34 @@ window.renderHistoryChart = function(targetYear) {
             scales: {
                 x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } },
                 y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } }
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false }
+        }
+    });
+
+    // Gràfic de Barres Apilades
+    window.stackedBarChartInstance = new Chart(barCanvas, {
+        type: 'bar',
+        data: { labels: monthNames, datasets: barDatasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            color: '#94a3b8',
+            plugins: {
+                legend: { display: false }, // Ho amaguem perquè ja tenim la llegenda a dalt
+                tooltip: { mode: 'index', intersect: false }
+            },
+            scales: {
+                x: { 
+                    stacked: true, 
+                    grid: { display: false }, // Traiem la quadrícula vertical perquè quedi més net
+                    ticks: { color: '#64748b', font: { size: 10 } } 
+                },
+                y: { 
+                    stacked: true, 
+                    grid: { color: '#1e293b' }, 
+                    ticks: { color: '#64748b', font: { size: 10 } } 
+                }
             },
             interaction: { mode: 'nearest', axis: 'x', intersect: false }
         }
