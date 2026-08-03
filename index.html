@@ -1512,7 +1512,6 @@ window.handleExpenseSubmit = async function(e) {
     e.preventDefault();
 
     const esNovaDespesa = !idDespesaEnEdicio;
-
     if(!activeCategory) return;
 
     const amount = parseFloat(document.getElementById('expenseAmount').value);
@@ -1537,62 +1536,52 @@ window.handleExpenseSubmit = async function(e) {
         };
 
         if (db) {
-            // >>> NOU: Determinar la clau del pagador actual per al resum <<<
+            // >>> IDENTIFICA DINÀMICAMENT EL PAGADOR <<<
             let clauPagador = 'compartit';
-            const normPayer = dadesDespesa.payer.toLowerCase();
-            if (normPayer.includes('montse') || normPayer === 'p1') clauPagador = 'Montse';
-            else if (normPayer.includes('meritxell') || normPayer === 'p2') clauPagador = 'Meritxell';
+            const normPayer = getNormalizedPayer(dadesDespesa.payer);
+            if (normPayer === 'p1') clauPagador = 'p1';
+            else if (normPayer === 'p2') clauPagador = 'p2';
 
-            // --- MODE NÚVOL (FIREBASE) ---
             if (idDespesaEnEdicio) {
-                // MODE EDICIÓ:
-                // 1. Primer busquem la despesa antiga per saber què hem de restar al resum
                 const antigaDespesa = expenses.find(e => e.id === idDespesaEnEdicio);
                 if (antigaDespesa) {
-                    // >>> NOU: Determinar el pagador antic per poder-lo restar <<<
                     let clauPagadorAntiga = 'compartit';
-                    const normPayerAntic = antigaDespesa.payer.toLowerCase();
-                    if (normPayerAntic.includes('montse') || normPayerAntic === 'p1') clauPagadorAntiga = 'Montse';
-                    else if (normPayerAntic.includes('meritxell') || normPayerAntic === 'p2') clauPagadorAntiga = 'Meritxell';
+                    const normPayerAntic = getNormalizedPayer(antigaDespesa.payer);
+                    if (normPayerAntic === 'p1') clauPagadorAntiga = 'p1';
+                    else if (normPayerAntic === 'p2') clauPagadorAntiga = 'p2';
 
                     const oldSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + antigaDespesa.monthKey);
                     await setDoc(oldSummaryRef, {
                         totalGeneral: increment(-antigaDespesa.amount),
                         [antigaDespesa.categoryId]: increment(-antigaDespesa.amount),
-                        [clauPagadorAntiga]: increment(-antigaDespesa.amount) // >>> NOU: Restem al pagador antic <<<
+                        [clauPagadorAntiga]: increment(-antigaDespesa.amount) 
                     }, { merge: true });
                 }
 
-                // 2. Guardem la nova versió de la despesa
                 const docRef = doc(EXPENSES_COLLECTION, idDespesaEnEdicio);
                 await setDoc(docRef, dadesDespesa);
 
-                // 3. Sumem els nous valors al resum
                 const newSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
                 await setDoc(newSummaryRef, {
                     totalGeneral: increment(dadesDespesa.amount),
                     [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
-                    [clauPagador]: increment(dadesDespesa.amount) // >>> NOU: Sumem al nou pagador <<<
+                    [clauPagador]: increment(dadesDespesa.amount) 
                 }, { merge: true });
 
             } else {
-                // MODE CREACIÓ: Creem un document nou des de zero
                 const newDocRef = doc(EXPENSES_COLLECTION);
                 await setDoc(newDocRef, dadesDespesa);
 
-                // ACTUALITZEM EL RESUM MENSUAL (Sumem import, categoria i pagador)
                 const summaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
                 await setDoc(summaryRef, {
                     totalGeneral: increment(dadesDespesa.amount),
                     [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
-                    [clauPagador]: increment(dadesDespesa.amount) // >>> NOU: Sumem al pagador <<<
+                    [clauPagador]: increment(dadesDespesa.amount) 
                 }, { merge: true });
             }
         } else {
-            // --- MODE LOCAL (SENSE CONNEXIÓ) ---
             const savedExp = localStorage.getItem('expenses_' + coupleId);
             let allExp = savedExp ? JSON.parse(savedExp) : [];
-            
             if (idDespesaEnEdicio) {
                 const index = allExp.findIndex(e => e.id === idDespesaEnEdicio);
                 if (index !== -1) {
@@ -1603,25 +1592,17 @@ window.handleExpenseSubmit = async function(e) {
                 dadesDespesa.id = 'exp_' + Date.now() + Math.floor(Math.random()*1000);
                 allExp.push(dadesDespesa);
             }
-            
             localStorage.setItem('expenses_' + coupleId, JSON.stringify(allExp));
             syncMonthData(getCurrentMonthKey());
         }
         
-        if (esNovaDespesa) {
-            triggerConfetti(false);
-        }
-
+        if (esNovaDespesa) triggerConfetti(false);
         idDespesaEnEdicio = null; 
         loadedHistoricalData = false;
-        
         document.getElementById('expenseAmount').value = '';
         document.getElementById('expenseConcept').value = '';
-
         const editCatDiv = document.getElementById('editCategoryDiv');
-        if (editCatDiv) {
-            editCatDiv.classList.add('hidden');
-        }
+        if (editCatDiv) editCatDiv.classList.add('hidden');
         
     } catch (err) {
         console.error(err);
@@ -1636,21 +1617,20 @@ window.deleteExpense = function(id) {
         try {
             if (db) {
                 const expToDelete = expenses.find(e => e.id === id);
-
                 await deleteDoc(doc(EXPENSES_COLLECTION, id));
 
                 if (expToDelete) {
-                    // >>> NOU: Calculem qui l'havia pagat per restar-li <<<
+                    // >>> IDENTIFICA DINÀMICAMENT A QUI RESTAR-LI <<<
                     let clauPagador = 'compartit';
-                    const normPayer = (expToDelete.payer || '').toLowerCase();
-                    if (normPayer.includes('montse') || normPayer === 'p1') clauPagador = 'Montse';
-                    else if (normPayer.includes('meritxell') || normPayer === 'p2') clauPagador = 'Meritxell';
+                    const normPayer = getNormalizedPayer(expToDelete.payer);
+                    if (normPayer === 'p1') clauPagador = 'p1';
+                    else if (normPayer === 'p2') clauPagador = 'p2';
 
                     const summaryRef = doc(db, 'monthly_summaries', coupleId + '_' + expToDelete.monthKey);
                     await setDoc(summaryRef, {
                         totalGeneral: increment(-expToDelete.amount),
                         [expToDelete.categoryId]: increment(-expToDelete.amount),
-                        [clauPagador]: increment(-expToDelete.amount) // >>> NOU: Restem del pagador <<<
+                        [clauPagador]: increment(-expToDelete.amount) 
                     }, { merge: true });
                 }
             } else {
@@ -1742,7 +1722,7 @@ window.editarDespesa = function(id) {
             }
         }
 
-async function loadHistoricalDataForChart() {
+window.loadHistoricalDataForChart = async function() {
     const canvasContainer = document.getElementById('historyChartContainer');
     
     if (!expenseChartInstance) {
@@ -1754,10 +1734,9 @@ async function loadHistoricalDataForChart() {
     }
 
     try {
-        window.historialResums = {}; // Guardarem tots els mesos aquí
+        window.historialResums = {}; 
         
         if (db) {
-            // Llegim TOTS els resums de la col·lecció (molt pocs documents, súper ràpid)
             const snap = await getDocs(collection(db, 'monthly_summaries'));
             snap.forEach(doc => {
                 if (doc.id.startsWith(coupleId + '_')) {
@@ -1766,17 +1745,17 @@ async function loadHistoricalDataForChart() {
                 }
             });
         } else {
-            // Mode Local (SENSE CONNEXIÓ)
             const savedExp = localStorage.getItem('expenses_' + coupleId);
             const allExp = savedExp ? JSON.parse(savedExp) : [];
             allExp.forEach(e => {
                 if (!window.historialResums[e.monthKey]) window.historialResums[e.monthKey] = {};
                 window.historialResums[e.monthKey][e.categoryId] = (window.historialResums[e.monthKey][e.categoryId] || 0) + parseFloat(e.amount || 0);
                 
+                // >>> ADAPTACIÓ AL MODE SENSE CONNEXIÓ <<<
                 let pKey = 'compartit';
-                const pStr = (e.paidBy || e.payer || '').toLowerCase();
-                if (pStr.includes('montse') || pStr === 'p1') pKey = 'Montse';
-                else if (pStr.includes('meritxell') || pStr === 'p2') pKey = 'Meritxell';
+                const normPayer = getNormalizedPayer(e.payer);
+                if (normPayer === 'p1') pKey = 'p1';
+                else if (normPayer === 'p2') pKey = 'p2';
                 
                 window.historialResums[e.monthKey][pKey] = (window.historialResums[e.monthKey][pKey] || 0) + parseFloat(e.amount || 0);
             });
@@ -1864,11 +1843,10 @@ async function loadHistoricalDataForChart() {
         }
         window.renderHistoryList = renderHistoryList;
 
-function renderHistoryChart() {
+window.renderHistoryChart = function() {
     const canvas = document.getElementById('expensesChart');
     if(!canvas) return;
 
-    // Si anteriorment teníem el gràfic de barres separat, el netegem
     const oldPayerCanvas = document.getElementById('payerExpensesChart');
     if (oldPayerCanvas) {
         const cardToRemove = oldPayerCanvas.closest('.bg-slate-900') || oldPayerCanvas.parentElement;
@@ -1881,14 +1859,11 @@ function renderHistoryChart() {
         expenseChartInstance.destroy();
     }
 
-    // Obtenim l'array de mesos ordenats directament de les claus dels resums
     let monthsArray = Object.keys(window.historialResums || {}).sort();
     if(monthsArray.length === 0) monthsArray = [getCurrentMonthKey()];
 
-    // 1. Línies poligonals per Categoria
     const categoryDatasets = categories.map(cat => {
         const data = monthsArray.map(mKey => {
-            // Si el mes existeix, agafem la suma de la categoria, si no 0
             const resumMes = window.historialResums[mKey] || {};
             return resumMes[cat.id] || 0;
         });
@@ -1905,15 +1880,24 @@ function renderHistoryChart() {
         };
     });
 
-    // 2. Línies poligonals per Pagador
-    const MontseData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['Montse'] || 0);
-    const MeritxellData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['Meritxell'] || 0);
+    // >>> AGAFEM ELS NOMS DINÀMICS (Marçal i Laura) <<<
+    const nomP1 = getPayerDisplayName('p1') || 'Persona 1';
+    const nomP2 = getPayerDisplayName('p2') || 'Persona 2';
+
+    const P1Data = monthsArray.map(mKey => {
+        const resum = window.historialResums[mKey] || {};
+        return (resum['p1'] || 0) + (resum['Montse'] || 0); // Sumem l'antic per si de cas
+    });
+    const P2Data = monthsArray.map(mKey => {
+        const resum = window.historialResums[mKey] || {};
+        return (resum['p2'] || 0) + (resum['Meritxell'] || 0);
+    });
     const compartitData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['compartit'] || 0);
 
     const payerDatasets = [
         {
-            label: '👤 Montse',
-            data: MontseData,
+            label: `👤 ${nomP1}`,
+            data: P1Data,
             borderColor: '#3b82f6',
             backgroundColor: '#3b82f6',
             tension: 0.4,
@@ -1924,8 +1908,8 @@ function renderHistoryChart() {
             pointBackgroundColor: '#3b82f6'
         },
         {
-            label: '👤 Meritxell',
-            data: MeritxellData,
+            label: `👤 ${nomP2}`,
+            data: P2Data,
             borderColor: '#ec4899',
             backgroundColor: '#ec4899',
             tension: 0.4,
@@ -1958,24 +1942,13 @@ function renderHistoryChart() {
 
     expenseChartInstance = new Chart(canvas, {
         type: 'line',
-        data: {
-            labels: labels,
-            datasets: allDatasets
-        },
+        data: { labels: labels, datasets: allDatasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             color: '#94a3b8',
             plugins: {
-                legend: { 
-                    position: 'bottom', 
-                    labels: { 
-                        color: '#94a3b8', 
-                        boxWidth: 12, 
-                        font: { size: 10 },
-                        usePointStyle: true
-                    } 
-                },
+                legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 10 }, usePointStyle: true } },
                 tooltip: { mode: 'index', intersect: false }
             },
             scales: {
