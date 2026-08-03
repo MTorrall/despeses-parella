@@ -2004,37 +2004,74 @@ window.renderHistoryChart = function(targetYear) {
     });
 }
 
-        window.exportToExcel = function() {
-            if(!window.XLSX) {
-                showCustomModal("Error", "Carregant llibreria d'exportació, si us plau espera un moment.", null, true);
-                return;
-            }
+window.exportToExcel = async function() {
+    if(!window.XLSX) {
+        showCustomModal("Error", "Carregant llibreria d'exportació, si us plau espera un moment.", null, true);
+        return;
+    }
 
-            const monthKey = getCurrentMonthKey();
-            const filtered = expenses.filter(e => e.monthKey === monthKey);
-            
-            if(filtered.length === 0) {
-                showCustomModal("Sense dades", "No hi ha despeses aquest mes per exportar.", null, true);
-                return;
-            }
+    // Posem el botó en mode càrrega perquè si hi ha moltes dades pot trigar un segon
+    const btnExport = document.querySelector('button[onclick="exportToExcel()"]');
+    const textOriginal = btnExport ? btnExport.innerHTML : '';
+    if (btnExport) {
+        btnExport.disabled = true;
+        btnExport.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Generant...';
+    }
 
-            const dataToExport = filtered.map(exp => {
-                const cat = categories.find(c => c.id === exp.categoryId);
-                return {
-                    'Data': exp.date,
-                    'Categoria': cat ? cat.name : 'Desconeguda',
-                    'Concepte': exp.concept,
-                    'Pagador': getPayerDisplayName(exp.payer),
-                    'Import (€)': parseFloat(exp.amount)
-                };
+    try {
+        let totesLesDespeses = [];
+
+        // 1. Obtenim TOTES les despeses (de Firebase o LocalStorage)
+        if (db) {
+            const snap = await getDocs(EXPENSES_COLLECTION);
+            snap.forEach(doc => {
+                totesLesDespeses.push(doc.data());
             });
-
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Despeses " + monthKey);
-            
-            XLSX.writeFile(workbook, `Despeses_Parella_${monthKey}.xlsx`);
+        } else {
+            const savedExp = localStorage.getItem('expenses_' + coupleId);
+            if (savedExp) totesLesDespeses = JSON.parse(savedExp);
         }
+        
+        if(totesLesDespeses.length === 0) {
+            showCustomModal("Sense dades", "No hi ha despeses registrades per exportar.", null, true);
+            return;
+        }
+
+        // 2. Ordenem per data (de la més recent a la més antiga)
+        totesLesDespeses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // 3. Formategem les dades per a l'Excel
+        const dataToExport = totesLesDespeses.map(exp => {
+            const cat = categories.find(c => c.id === exp.categoryId);
+            return {
+                'Data': exp.date,
+                'Categoria': cat ? cat.name : 'Desconeguda',
+                'Concepte': exp.concept,
+                // Utilitzem getNormalizedPayer per assegurar que els noms vells/nous es tradueixin bé
+                'Pagador': getPayerDisplayName(getNormalizedPayer(exp.payer)),
+                'Import (€)': parseFloat(exp.amount)
+            };
+        });
+
+        // 4. Generem i descarreguem l'arxiu XLSX
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Historial Complet");
+        
+        // Nom de l'arxiu més representatiu
+        XLSX.writeFile(workbook, `Historial_Despeses_Parella.xlsx`);
+        
+    } catch (err) {
+        console.error("Error exportant dades:", err);
+        showCustomModal("Error", "No s'ha pogut generar l'exportació.", null, true);
+    } finally {
+        // Restaurem el botó a la normalitat
+        if (btnExport) {
+            btnExport.disabled = false;
+            btnExport.innerHTML = textOriginal;
+        }
+    }
+}
 
         window.openSettingsModal = function() {
             document.getElementById('settingsModal').classList.remove('hidden');
