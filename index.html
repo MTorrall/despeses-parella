@@ -1906,9 +1906,18 @@ window.renderHistoryChart = function(targetYear) {
     }
     document.getElementById('chartYearSelect').innerHTML = availableYears.map(y => `<option value="${y}" ${y === yearToDisplay ? 'selected' : ''}>${y}</option>`).join('');
 
-    // Noms dels pagadors per als títols
-    const nomP1 = getPayerDisplayName('p1') || 'Persona 1';
-    const nomP2 = getPayerDisplayName('p2') || 'Persona 2';
+    // Noms dels pagadors per als títols (per defecte Marçal i Laura)
+    let nomP1 = 'Marçal'; 
+    let nomP2 = 'Laura';
+
+    // Intentem llegir-los directament del selector on trieu qui paga la despesa (així sempre estan sincronitzats)
+    const selectorPagador = document.getElementById('expensePayer');
+    if (selectorPagador && selectorPagador.options) {
+        for (let opt of selectorPagador.options) {
+            if (opt.value === 'p1') nomP1 = opt.text;
+            if (opt.value === 'p2') nomP2 = opt.text;
+        }
+    }
 
     // FUNCIÓ PER CREAR CONTENIDORS DE GRÀFICS DINÀMICAMENT
     const createBarContainer = (id, title) => {
@@ -1916,10 +1925,13 @@ window.renderHistoryChart = function(targetYear) {
         if (!container) {
             container = document.createElement('div');
             container.id = `${id}Container`;
-            // donem marge superior per separar-ho visualment del gràfic de dalt
             container.className = 'relative h-64 w-full mt-8 pt-6 border-t border-slate-800'; 
             container.innerHTML = `<h3 class="text-slate-400 text-xs font-semibold mb-2 text-center uppercase tracking-wider">${title}</h3><canvas id="${id}Chart"></canvas>`;
             canvasWrapper.parentElement.appendChild(container);
+        } else {
+            // >>> SOLUCIÓ: Si el contenidor ja existeix a la pantalla, li forcem a actualitzar el títol <<<
+            const h3 = container.querySelector('h3');
+            if (h3) h3.innerText = title;
         }
         return document.getElementById(`${id}Chart`);
     };
