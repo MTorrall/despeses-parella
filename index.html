@@ -1859,31 +1859,29 @@ window.renderHistoryChart = function(targetYear) {
     const canvas = document.getElementById('expensesChart');
     if(!canvas) return;
 
-    // Neteja de gràfics antics per evitar encavalcaments
+    // Neteja general d'instàncies per evitar encavalcaments visuals
+    if (window.expenseChartInstance) window.expenseChartInstance.destroy();
+    if (window.stackedBarChartInstance) window.stackedBarChartInstance.destroy();
+    if (window.p1BarChartInstance) window.p1BarChartInstance.destroy();
+    if (window.p2BarChartInstance) window.p2BarChartInstance.destroy();
+
     const oldPayerCanvas = document.getElementById('payerExpensesChart');
     if (oldPayerCanvas) {
         const cardToRemove = oldPayerCanvas.closest('.bg-slate-900') || oldPayerCanvas.parentElement;
-        if (cardToRemove && cardToRemove !== canvas.parentElement) {
-            cardToRemove.remove();
-        }
+        if (cardToRemove && cardToRemove !== canvas.parentElement) cardToRemove.remove();
     }
 
-    if (window.expenseChartInstance) window.expenseChartInstance.destroy();
-    if (window.stackedBarChartInstance) window.stackedBarChartInstance.destroy();
-
-    // EXTREURE ELS ANYS I CREAR EL FILTRE
+    // Identificar els anys disponibles
     const allMonthKeys = Object.keys(window.historialResums || {});
     let availableYears = [...new Set(allMonthKeys.map(k => k.split('-')[0]))].sort((a, b) => b - a); 
-    
     const currentYearStr = new Date().getFullYear().toString();
     if (availableYears.length === 0) availableYears = [currentYearStr];
 
     let yearToDisplay = targetYear || availableYears[0];
-
-    // Inserim la interfície (el desplegable)
-    let filterContainer = document.getElementById('chartYearFilterContainer');
     const canvasWrapper = canvas.closest('.relative') || canvas.parentElement;
     
+    // Crear el filtre d'anys a dalt de tot
+    let filterContainer = document.getElementById('chartYearFilterContainer');
     if (!filterContainer) {
         filterContainer = document.createElement('div');
         filterContainer.id = 'chartYearFilterContainer';
@@ -1896,161 +1894,131 @@ window.renderHistoryChart = function(targetYear) {
             </div>
         `;
         canvasWrapper.parentElement.insertBefore(filterContainer, canvasWrapper);
-
-        document.getElementById('chartYearSelect').addEventListener('change', (e) => {
-            renderHistoryChart(e.target.value);
-        });
+        document.getElementById('chartYearSelect').addEventListener('change', (e) => renderHistoryChart(e.target.value));
     }
+    document.getElementById('chartYearSelect').innerHTML = availableYears.map(y => `<option value="${y}" ${y === yearToDisplay ? 'selected' : ''}>${y}</option>`).join('');
 
-    const select = document.getElementById('chartYearSelect');
-    select.innerHTML = availableYears.map(y => 
-        `<option value="${y}" ${y === yearToDisplay ? 'selected' : ''}>${y}</option>`
-    ).join('');
-
-    // CREAR CONTENIDOR PEL GRÀFIC DE BARRES
-    let barContainer = document.getElementById('stackedBarContainer');
-    if (!barContainer) {
-        barContainer = document.createElement('div');
-        barContainer.id = 'stackedBarContainer';
-        barContainer.className = 'relative h-64 w-full mt-8 pt-6 border-t border-slate-800'; 
-        barContainer.innerHTML = '<h3 class="text-slate-400 text-xs font-semibold mb-2 text-center uppercase tracking-wider">Despesa Total per Mes</h3><canvas id="stackedBarChart"></canvas>';
-        canvasWrapper.parentElement.appendChild(barContainer);
-    }
-    const barCanvas = document.getElementById('stackedBarChart');
-
-    // GENERAR LA LÍNIA DE TEMPS ESTABLE (12 MESOS)
-    const monthsArray = [];
-    const monthNames = ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Des"];
-    
-    for (let i = 1; i <= 12; i++) {
-        const mKey = `${yearToDisplay}-${i.toString().padStart(2, '0')}`;
-        monthsArray.push(mKey);
-    }
-
-    // DADES PEL GRÀFIC POLIGONAL
-    const categoryDatasets = categories.map(cat => {
-        const data = monthsArray.map(mKey => {
-            const resumMes = window.historialResums[mKey] || {};
-            return resumMes[cat.id] || 0;
-        });
-
-        return {
-            label: cat.name,
-            data: data,
-            borderColor: CHART_COLORS[cat.color] || '#cbd5e1',
-            backgroundColor: (CHART_COLORS[cat.color] || '#cbd5e1') + '20',
-            tension: 0.4,
-            fill: false,
-            borderWidth: 2,
-            pointBackgroundColor: CHART_COLORS[cat.color] || '#cbd5e1'
-        };
-    });
-
+    // Noms dels pagadors per als títols
     const nomP1 = getPayerDisplayName('p1') || 'Persona 1';
     const nomP2 = getPayerDisplayName('p2') || 'Persona 2';
 
-    const P1Data = monthsArray.map(mKey => {
-        const resum = window.historialResums[mKey] || {};
-        return (resum['p1'] || 0) + (resum['Montse'] || 0); 
-    });
-    const P2Data = monthsArray.map(mKey => {
-        const resum = window.historialResums[mKey] || {};
-        return (resum['p2'] || 0) + (resum['Meritxell'] || 0);
-    });
-    const compartitData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['compartit'] || 0);
-
-    const payerDatasets = [
-        { label: `👤 ${nomP1}`, data: P1Data, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#3b82f6' },
-        { label: `👤 ${nomP2}`, data: P2Data, borderColor: '#ec4899', backgroundColor: '#ec4899', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#ec4899' },
-        { label: '👥 Compartit', data: compartitData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#10b981' }
-    ];
-
-    const allDatasets = [...categoryDatasets, ...payerDatasets];
-
-    // DADES PEL GRÀFIC DE BARRES APILADES
-    const barDatasets = categories.map(cat => {
-        const data = monthsArray.map(mKey => {
-            const resumMes = window.historialResums[mKey] || {};
-            return resumMes[cat.id] || 0;
-        });
-
-        return {
-            label: cat.name,
-            data: data,
-            backgroundColor: CHART_COLORS[cat.color] || '#cbd5e1',
-            borderWidth: 0 
-        };
-    });
-
-    // PINTAR ELS DOS GRÀFICS
-    
-    // 1. Gràfic Poligonal (Línies)
-    window.expenseChartInstance = new Chart(canvas, {
-        type: 'line',
-        data: { labels: monthNames, datasets: allDatasets }, 
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            color: '#94a3b8',
-            plugins: {
-                legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 10 }, usePointStyle: true } },
-                tooltip: { mode: 'index', intersect: false }
-            },
-            scales: {
-                x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } },
-                y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } }
-            },
-            interaction: { mode: 'nearest', axis: 'x', intersect: false }
+    // FUNCIÓ PER CREAR CONTENIDORS DE GRÀFICS DINÀMICAMENT
+    const createBarContainer = (id, title) => {
+        let container = document.getElementById(`${id}Container`);
+        if (!container) {
+            container = document.createElement('div');
+            container.id = `${id}Container`;
+            // donem marge superior per separar-ho visualment del gràfic de dalt
+            container.className = 'relative h-64 w-full mt-8 pt-6 border-t border-slate-800'; 
+            container.innerHTML = `<h3 class="text-slate-400 text-xs font-semibold mb-2 text-center uppercase tracking-wider">${title}</h3><canvas id="${id}Chart"></canvas>`;
+            canvasWrapper.parentElement.appendChild(container);
         }
-    });
+        return document.getElementById(`${id}Chart`);
+    };
 
-    // 2. Gràfic de Barres Apilades
-    window.stackedBarChartInstance = new Chart(barCanvas, {
-        type: 'bar',
-        data: { labels: monthNames, datasets: barDatasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            color: '#94a3b8',
-            plugins: {
-                legend: { display: false },
-                tooltip: { 
-                    mode: 'index', 
-                    intersect: false,
-                    // >>> NOU: Afegit el càlcul del Total al Tooltip <<<
-                    callbacks: {
-                        footer: function(tooltipItems) {
-                            let total = 0;
-                            // Sumem els valors de totes les barres apilades d'aquest mes
-                            tooltipItems.forEach(function(tooltipItem) {
-                                total += tooltipItem.parsed.y;
-                            });
-                            
-                            // Si hi ha despeses, generem la fila del total formatada
-                            if (total > 0) {
-                                const totalFormatat = total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                return '\nTotal: ' + totalFormatat + ' €';
-                            }
-                            return '';
-                        }
+    // Creem els 3 llenços (canvas) nous
+    const barCanvas = createBarContainer('stackedBar', 'Despesa Total per Mes');
+    const p1BarCanvas = createBarContainer('p1Bar', `Despesa Real: ${nomP1} (100% Propi + 50% Compartit)`);
+    const p2BarCanvas = createBarContainer('p2Bar', `Despesa Real: ${nomP2} (100% Propi + 50% Compartit)`);
+
+    // GENERAR LA LÍNIA DE TEMPS ESTABLE (12 mesos d'aquell any)
+    const monthsArray = [];
+    const monthNames = ["Gen", "Feb", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Des"];
+    for (let i = 1; i <= 12; i++) monthsArray.push(`${yearToDisplay}-${i.toString().padStart(2, '0')}`);
+
+    // CONFIGURACIÓ COMUNA PELS GRÀFICS DE BARRES (inclou el "Total" al peu de l'etiqueta negra)
+    const commonBarOptions = {
+        responsive: true, maintainAspectRatio: false, color: '#94a3b8',
+        plugins: {
+            legend: { display: false },
+            tooltip: { 
+                mode: 'index', intersect: false,
+                callbacks: {
+                    footer: function(tooltipItems) {
+                        let total = 0;
+                        tooltipItems.forEach(item => total += item.parsed.y);
+                        if (total > 0) return '\nTotal: ' + total.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+                        return '';
                     }
                 }
-            },
-            scales: {
-                x: { 
-                    stacked: true, 
-                    grid: { display: false }, 
-                    ticks: { color: '#64748b', font: { size: 10 } } 
-                },
-                y: { 
-                    stacked: true, 
-                    grid: { color: '#1e293b' }, 
-                    ticks: { color: '#64748b', font: { size: 10 } } 
-                }
-            },
+            }
+        },
+        scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } },
+            y: { stacked: true, grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+    };
+
+    // >>> CALCULAR LES DADES QUE VAN A CADA GRÀFIC <<<
+    const lineCategoryDatasets = [];
+    const totalBarDatasets = [];
+    const p1BarDatasets = [];
+    const p2BarDatasets = [];
+
+    categories.forEach(cat => {
+        const lineData = []; const totalBarData = []; const p1Data = []; const p2Data = [];
+
+        monthsArray.forEach(mKey => {
+            const resum = window.historialResums[mKey] || {};
+            
+            // 1. Dades globals (Gràfic 1 i 2)
+            const totalCat = resum[cat.id] || 0;
+            lineData.push(totalCat);
+            totalBarData.push(totalCat);
+
+            // 2. Dades per a la Persona 1 (Gràfic 3)
+            const despesaP1 = resum[`p1_${cat.id}`] || 0;
+            const despesaComp = (resum[`compartit_${cat.id}`] || 0) / 2;
+            p1Data.push(despesaP1 + despesaComp);
+
+            // 3. Dades per a la Persona 2 (Gràfic 4)
+            const despesaP2 = resum[`p2_${cat.id}`] || 0;
+            p2Data.push(despesaP2 + despesaComp);
+        });
+
+        const color = CHART_COLORS[cat.color] || '#cbd5e1';
+        
+        // Ho afegim tot als conjunts de dades per a Chart.js
+        lineCategoryDatasets.push({ label: cat.name, data: lineData, borderColor: color, backgroundColor: color + '20', tension: 0.4, fill: false, borderWidth: 2, pointBackgroundColor: color });
+        totalBarDatasets.push({ label: cat.name, data: totalBarData, backgroundColor: color, borderWidth: 0 });
+        p1BarDatasets.push({ label: cat.name, data: p1Data, backgroundColor: color, borderWidth: 0 });
+        p2BarDatasets.push({ label: cat.name, data: p2Data, backgroundColor: color, borderWidth: 0 });
+    });
+
+    // Dades dels pagadors per al gràfic principal de línies
+    const P1LineData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['p1'] || 0);
+    const P2LineData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['p2'] || 0);
+    const compartitLineData = monthsArray.map(mKey => (window.historialResums[mKey] || {})['compartit'] || 0);
+
+    const payerDatasets = [
+        { label: `👤 ${nomP1}`, data: P1LineData, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#3b82f6' },
+        { label: `👤 ${nomP2}`, data: P2LineData, borderColor: '#ec4899', backgroundColor: '#ec4899', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#ec4899' },
+        { label: '👥 Compartit', data: compartitLineData, borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, borderWidth: 3, borderDash: [6, 4], pointRadius: 4, fill: false, pointBackgroundColor: '#10b981' }
+    ];
+
+    // >>> PINTAR ELS 4 GRÀFICS FÍSICAMENT A LA PANTALLA <<<
+    
+    // 1. Gràfic de Línies general
+    window.expenseChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: { labels: monthNames, datasets: [...lineCategoryDatasets, ...payerDatasets] }, 
+        options: {
+            responsive: true, maintainAspectRatio: false, color: '#94a3b8',
+            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: { size: 10 }, usePointStyle: true } }, tooltip: { mode: 'index', intersect: false } },
+            scales: { x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } }, y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { size: 10 } } } },
             interaction: { mode: 'nearest', axis: 'x', intersect: false }
         }
     });
+
+    // 2. Gràfic de Barres: Total de la parella
+    window.stackedBarChartInstance = new Chart(barCanvas, { type: 'bar', data: { labels: monthNames, datasets: totalBarDatasets }, options: commonBarOptions });
+    
+    // 3. Gràfic de Barres: Persona 1 (Propi + 50% Compartit)
+    window.p1BarChartInstance = new Chart(p1BarCanvas, { type: 'bar', data: { labels: monthNames, datasets: p1BarDatasets }, options: commonBarOptions });
+    
+    // 4. Gràfic de Barres: Persona 2 (Propi + 50% Compartit)
+    window.p2BarChartInstance = new Chart(p2BarCanvas, { type: 'bar', data: { labels: monthNames, datasets: p2BarDatasets }, options: commonBarOptions });
 }
 
 window.exportToExcel = async function() {
