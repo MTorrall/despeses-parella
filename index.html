@@ -1535,9 +1535,18 @@ window.handleExpenseSubmit = async function(e) {
             monthKey: date.substring(0, 7)
         };
 
+        // Funció interna de seguretat per identificar pagadors sense dependre de funcions externes
+        const normalitzaPayerSegur = (p) => {
+            if (typeof getNormalizedPayer === 'function') return getNormalizedPayer(p);
+            const pLower = (p || '').toLowerCase();
+            if (pLower.includes('marçal') || pLower === 'p1') return 'p1';
+            if (pLower.includes('laura') || pLower === 'p2') return 'p2';
+            return p;
+        };
+
         if (db) {
             let clauPagador = 'compartit';
-            const normPayer = getNormalizedPayer(dadesDespesa.payer);
+            const normPayer = normalitzaPayerSegur(dadesDespesa.payer);
             if (normPayer === 'p1') clauPagador = 'p1';
             else if (normPayer === 'p2') clauPagador = 'p2';
 
@@ -1547,7 +1556,7 @@ window.handleExpenseSubmit = async function(e) {
                 const antigaDespesa = expenses.find(e => e.id === idDespesaEnEdicio);
                 if (antigaDespesa) {
                     let clauPagadorAntiga = 'compartit';
-                    const normPayerAntic = getNormalizedPayer(antigaDespesa.payer);
+                    const normPayerAntic = normalitzaPayerSegur(antigaDespesa.payer);
                     if (normPayerAntic === 'p1') clauPagadorAntiga = 'p1';
                     else if (normPayerAntic === 'p2') clauPagadorAntiga = 'p2';
 
@@ -1558,33 +1567,27 @@ window.handleExpenseSubmit = async function(e) {
                         totalGeneral: increment(-antigaDespesa.amount),
                         [antigaDespesa.categoryId]: increment(-antigaDespesa.amount),
                         [clauPagadorAntiga]: increment(-antigaDespesa.amount),
-                        [clauCreuadaAntiga]: increment(-antigaDespesa.amount) // Restem l'antiga creuada
+                        [clauCreuadaAntiga]: increment(-antigaDespesa.amount) 
                     }, { merge: true });
                 }
 
                 const docRef = doc(EXPENSES_COLLECTION, idDespesaEnEdicio);
                 await setDoc(docRef, dadesDespesa);
 
-                const newSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
-                await setDoc(newSummaryRef, {
-                    totalGeneral: increment(dadesDespesa.amount),
-                    [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
-                    [clauPagador]: increment(dadesDespesa.amount),
-                    [clauCreuada]: increment(dadesDespesa.amount) // Sumem la nova creuada
-                }, { merge: true });
-
             } else {
                 const newDocRef = doc(EXPENSES_COLLECTION);
                 await setDoc(newDocRef, dadesDespesa);
-
-                const summaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
-                await setDoc(summaryRef, {
-                    totalGeneral: increment(dadesDespesa.amount),
-                    [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
-                    [clauPagador]: increment(dadesDespesa.amount),
-                    [clauCreuada]: increment(dadesDespesa.amount) // Guardem la creuada de la nova despesa
-                }, { merge: true });
             }
+
+            // Sumem la nova despesa al resum del mes
+            const newSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + dadesDespesa.monthKey);
+            await setDoc(newSummaryRef, {
+                totalGeneral: increment(dadesDespesa.amount),
+                [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
+                [clauPagador]: increment(dadesDespesa.amount),
+                [clauCreuada]: increment(dadesDespesa.amount) 
+            }, { merge: true });
+
         } else {
             const savedExp = localStorage.getItem('expenses_' + coupleId);
             let allExp = savedExp ? JSON.parse(savedExp) : [];
@@ -1609,10 +1612,15 @@ window.handleExpenseSubmit = async function(e) {
         document.getElementById('expenseConcept').value = '';
         const editCatDiv = document.getElementById('editCategoryDiv');
         if (editCatDiv) editCatDiv.classList.add('hidden');
+
+        // Si tenies alguna funció original per amagar el modal de "Sincronitzant...", 
+        // crida-la just aquí abans que acabi. Per exemple:
+        // document.getElementById('syncModal').classList.add('hidden');
         
     } catch (err) {
-        console.error(err);
-        showCustomModal("Error", "No s'ha pogut guardar la despesa.", null, true);
+        console.error("ERROR PROFUND:", err);
+        // Això ens farà saltar un avís per pantalla per no haver d'endevinar què passa
+        alert("S'ha aturat el procés per aquest error: " + err.message); 
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i><span>Afegir Despesa</span>';
