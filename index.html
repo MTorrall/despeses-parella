@@ -357,7 +357,7 @@ body.light-mode [class*="divide-slate-"] {
                 </div>
 
                 <!-- Formulari de Nova Despesa Ràpida -->
-                <form id="quickExpenseForm" onsubmit="window.handleExpenseSubmit(event)" class="space-y-4 bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
+                <form id="quickExpenseForm" onsubmit="window.(event)" class="space-y-4 bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
                     <h4 class="text-xs uppercase font-bold text-sky-400 tracking-wider flex items-center space-x-1.5">
                         <i class="fa-solid fa-bolt"></i>
                         <span>Afegir nova despesa</span>
@@ -1536,11 +1536,12 @@ window.handleExpenseSubmit = async function(e) {
         };
 
         if (db) {
-            // >>> IDENTIFICA DINÀMICAMENT EL PAGADOR <<<
             let clauPagador = 'compartit';
             const normPayer = getNormalizedPayer(dadesDespesa.payer);
             if (normPayer === 'p1') clauPagador = 'p1';
             else if (normPayer === 'p2') clauPagador = 'p2';
+
+            const clauCreuada = `${clauPagador}_${dadesDespesa.categoryId}`;
 
             if (idDespesaEnEdicio) {
                 const antigaDespesa = expenses.find(e => e.id === idDespesaEnEdicio);
@@ -1550,11 +1551,14 @@ window.handleExpenseSubmit = async function(e) {
                     if (normPayerAntic === 'p1') clauPagadorAntiga = 'p1';
                     else if (normPayerAntic === 'p2') clauPagadorAntiga = 'p2';
 
+                    const clauCreuadaAntiga = `${clauPagadorAntiga}_${antigaDespesa.categoryId}`;
+
                     const oldSummaryRef = doc(db, 'monthly_summaries', coupleId + '_' + antigaDespesa.monthKey);
                     await setDoc(oldSummaryRef, {
                         totalGeneral: increment(-antigaDespesa.amount),
                         [antigaDespesa.categoryId]: increment(-antigaDespesa.amount),
-                        [clauPagadorAntiga]: increment(-antigaDespesa.amount) 
+                        [clauPagadorAntiga]: increment(-antigaDespesa.amount),
+                        [clauCreuadaAntiga]: increment(-antigaDespesa.amount) // Restem l'antiga creuada
                     }, { merge: true });
                 }
 
@@ -1565,7 +1569,8 @@ window.handleExpenseSubmit = async function(e) {
                 await setDoc(newSummaryRef, {
                     totalGeneral: increment(dadesDespesa.amount),
                     [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
-                    [clauPagador]: increment(dadesDespesa.amount) 
+                    [clauPagador]: increment(dadesDespesa.amount),
+                    [clauCreuada]: increment(dadesDespesa.amount) // Sumem la nova creuada
                 }, { merge: true });
 
             } else {
@@ -1576,7 +1581,8 @@ window.handleExpenseSubmit = async function(e) {
                 await setDoc(summaryRef, {
                     totalGeneral: increment(dadesDespesa.amount),
                     [dadesDespesa.categoryId]: increment(dadesDespesa.amount),
-                    [clauPagador]: increment(dadesDespesa.amount) 
+                    [clauPagador]: increment(dadesDespesa.amount),
+                    [clauCreuada]: increment(dadesDespesa.amount) // Guardem la creuada de la nova despesa
                 }, { merge: true });
             }
         } else {
@@ -1620,17 +1626,19 @@ window.deleteExpense = function(id) {
                 await deleteDoc(doc(EXPENSES_COLLECTION, id));
 
                 if (expToDelete) {
-                    // >>> IDENTIFICA DINÀMICAMENT A QUI RESTAR-LI <<<
                     let clauPagador = 'compartit';
                     const normPayer = getNormalizedPayer(expToDelete.payer);
                     if (normPayer === 'p1') clauPagador = 'p1';
                     else if (normPayer === 'p2') clauPagador = 'p2';
 
+                    const clauCreuada = `${clauPagador}_${expToDelete.categoryId}`;
+
                     const summaryRef = doc(db, 'monthly_summaries', coupleId + '_' + expToDelete.monthKey);
                     await setDoc(summaryRef, {
                         totalGeneral: increment(-expToDelete.amount),
                         [expToDelete.categoryId]: increment(-expToDelete.amount),
-                        [clauPagador]: increment(-expToDelete.amount) 
+                        [clauPagador]: increment(-expToDelete.amount),
+                        [clauCreuada]: increment(-expToDelete.amount) 
                     }, { merge: true });
                 }
             } else {
@@ -1725,11 +1733,11 @@ window.editarDespesa = function(id) {
 window.loadHistoricalDataForChart = async function() {
     const canvasContainer = document.getElementById('historyChartContainer');
     
-    if (!expenseChartInstance) {
+    if (!window.expenseChartInstance) {
         const loadingMsg = document.createElement('div');
         loadingMsg.id = 'chartLoadingMsg';
         loadingMsg.className = 'absolute inset-0 flex items-center justify-center bg-slate-950/80 z-10 text-sky-400 text-xs font-bold rounded-xl';
-        loadingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Carregant historial complet...';
+        loadingMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Carregant historial...';
         canvasContainer.querySelector('div.relative').appendChild(loadingMsg);
     }
 
@@ -1737,6 +1745,7 @@ window.loadHistoricalDataForChart = async function() {
         window.historialResums = {}; 
         
         if (db) {
+            // Només llegim els resums mensuals (1 document per mes)
             const snap = await getDocs(collection(db, 'monthly_summaries'));
             snap.forEach(doc => {
                 if (doc.id.startsWith(coupleId + '_')) {
@@ -1745,19 +1754,22 @@ window.loadHistoricalDataForChart = async function() {
                 }
             });
         } else {
+            // Mode offline: calculem sobre la marxa si cal
             const savedExp = localStorage.getItem('expenses_' + coupleId);
             const allExp = savedExp ? JSON.parse(savedExp) : [];
             allExp.forEach(e => {
-                if (!window.historialResums[e.monthKey]) window.historialResums[e.monthKey] = {};
-                window.historialResums[e.monthKey][e.categoryId] = (window.historialResums[e.monthKey][e.categoryId] || 0) + parseFloat(e.amount || 0);
+                const mKey = e.monthKey;
+                if (!window.historialResums[mKey]) window.historialResums[mKey] = {};
                 
-                // >>> ADAPTACIÓ AL MODE SENSE CONNEXIÓ <<<
+                const amount = parseFloat(e.amount || 0);
+                let normPayer = getNormalizedPayer(e.payer);
                 let pKey = 'compartit';
-                const normPayer = getNormalizedPayer(e.payer);
                 if (normPayer === 'p1') pKey = 'p1';
                 else if (normPayer === 'p2') pKey = 'p2';
-                
-                window.historialResums[e.monthKey][pKey] = (window.historialResums[e.monthKey][pKey] || 0) + parseFloat(e.amount || 0);
+
+                window.historialResums[mKey][e.categoryId] = (window.historialResums[mKey][e.categoryId] || 0) + amount;
+                window.historialResums[mKey][pKey] = (window.historialResums[mKey][pKey] || 0) + amount;
+                window.historialResums[mKey][`${pKey}_${e.categoryId}`] = (window.historialResums[mKey][`${pKey}_${e.categoryId}`] || 0) + amount;
             });
         }
         loadedHistoricalData = true;
